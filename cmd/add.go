@@ -49,7 +49,7 @@ var AddCommand = &cobra.Command{
 			os.Exit(1)
 		}
 
-		var gitResponse GitResponse
+		var gitResponse GitResponseData
 		err = json.Unmarshal(resBodyGranted, &gitResponse)
 		if err != nil {
 			fmt.Fprint(os.Stderr, "Could not unmarshal response body\n")

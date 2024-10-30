@@ -13,17 +13,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type GitResponse struct {
-	Content string `json:"content"`
-	Sha     string `json:"sha"`
-}
-
 var idInstedOfName bool
-
-var approveCmd = &cobra.Command{
-	Use:     "approve your_id {uar_id | user repo}",
-	Short:   "Approve a request",
-	Aliases: []string{"a"},
+var grantCmd = &cobra.Command{
+	Use:     "grant your_id {uar_id | user repo}",
+	Short:   "Grant a request",
+	Aliases: []string{"g"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {
 			return fmt.Errorf("your github ID is required")
@@ -56,7 +50,7 @@ var approveCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		var gitResponse GitResponse
+		var gitResponse GitResponseData
 		err = json.Unmarshal(resBodyRequests, &gitResponse)
 		if err != nil {
 			fmt.Fprint(os.Stderr, "Could not unmarshal response body\n")
@@ -243,6 +237,6 @@ var approveCmd = &cobra.Command{
 }
 
 func init() {
-	approveCmd.Flags().BoolVarP(&idInstedOfName, "id", "i", false, "Find user by ID instead of name")
-	rootCmd.AddCommand(approveCmd)
+	grantCmd.Flags().BoolVarP(&idInstedOfName, "id", "i", false, "Find user by ID instead of name")
+	rootCmd.AddCommand(grantCmd)
 }
