@@ -8,12 +8,8 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "app",
-	Short: "app is a CLI application",
-	Long: `app is a CLI application that demonstrates how to build command line applications using the Cobra library.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Hello, World!")
-	},
+	Use:   "uar",
+	Short: "uar is a tool for managing user access records",
 }
 
 func Execute() {

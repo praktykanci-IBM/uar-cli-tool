@@ -1,5 +1,10 @@
 package cmd
 
+type GitResponseData struct {
+	Content string `json:"content"`
+	Sha     string `json:"sha"`
+}
+
 type Request struct {
 	Name          string `json:"name"`
 	When          int64  `json:"when"`
