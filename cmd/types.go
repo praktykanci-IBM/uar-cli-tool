@@ -18,7 +18,9 @@ type GrantedRequest struct {
 	Justification string `json:"justification"`
 	Repo          string `json:"repo"`
 	ID            string `json:"id"`
-	Approver      string `json:"approver"`
+	ApproverID    string `json:"approver"`
+	AdminID       string `json:"admin"`
+	WhenCompleted int64  `json:"whenCompleted"`
 }
 type GrantedRequests struct {
 	Requests []GrantedRequest `json:"grantedRequests"`

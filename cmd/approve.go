@@ -78,7 +78,6 @@ var approveCmd = &cobra.Command{
 		}
 
 		var approvedRequest Request
-
 		if len(args) == 2 {
 			for i, request := range requests.Requests {
 				if request.ID == args[1] {
@@ -154,7 +153,9 @@ var approveCmd = &cobra.Command{
 			Justification: approvedRequest.Justification,
 			Repo:          approvedRequest.Repo,
 			ID:            approvedRequest.ID,
-			Approver:      args[0],
+			ApproverID:    args[0],
+			AdminID:       "",
+			WhenCompleted: 0,
 		})
 
 		grantedJson, err := json.Marshal(grantedRequests)
