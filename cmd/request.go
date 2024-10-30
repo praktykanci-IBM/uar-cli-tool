@@ -13,28 +13,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type Request struct {
-	Name          string `json:"name"`
-	When          int64  `json:"when"`
-	Justification string `json:"justification"`
-	Repo          string `json:"repo"`
-	ID			  string `json:"id"`
-}
-type Requests struct {
-	Requests []Request `json:"requests"`
-}
-
-
 var requestCmd = &cobra.Command{
-    Use:     "request",
-    Aliases: []string{"r"},
-    Short:   "Request access to repository",
-    Long:    "Request access to selected repository with user ID, repository name and business justification",
-    Args:    cobra.ExactArgs(3),
-    Run: func(cmd *cobra.Command, args []string) {
+	Use:     "request",
+	Aliases: []string{"r"},
+	Short:   "Request access to repository",
+	Long:    "Request access to selected repository with user ID, repository name and business justification",
+	Args:    cobra.ExactArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
 
 		//check if user exists
-		username:= args[0]
+		username := args[0]
 		url := fmt.Sprintf("https://api.github.com/users/%s", username)
 		resp, err := http.Get(url)
 
@@ -45,7 +33,7 @@ var requestCmd = &cobra.Command{
 		defer resp.Body.Close()
 
 		var result map[string]interface{}
-		
+
 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 			fmt.Println("Error decoding JSON:", err)
 			return
@@ -55,7 +43,7 @@ var requestCmd = &cobra.Command{
 			fmt.Println("User does not exist.")
 		} else {
 			//check if repo exists
-			repo:= args[1]
+			repo := args[1]
 
 			url := fmt.Sprintf("https://api.github.com/repos/%s", repo)
 			resp, err := http.Get(url)
@@ -67,7 +55,7 @@ var requestCmd = &cobra.Command{
 			defer resp.Body.Close()
 
 			var result map[string]interface{}
-			
+
 			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 				fmt.Println("Error decoding JSON:", err)
 				return
@@ -92,17 +80,16 @@ var requestCmd = &cobra.Command{
 					return
 				}
 
-
 				if encodedContent, ok := result["content"].(string); ok {
 					decodedContent, err := base64.StdEncoding.DecodeString(encodedContent)
 					if err != nil {
 						fmt.Println("Error decoding Base64 content:", err)
 						return
 					}
-					sha:=result["sha"].(string)
+					sha := result["sha"].(string)
 					var data Requests
-					errr:=json.Unmarshal(decodedContent, &data)
-					if errr!=nil{
+					errr := json.Unmarshal(decodedContent, &data)
+					if errr != nil {
 						fmt.Println("Error", errr)
 						return
 					}
@@ -114,32 +101,31 @@ var requestCmd = &cobra.Command{
 						Repo:          repo,
 						ID:            id,
 					}
-					
+
 					data.Requests = append(data.Requests, newRequest)
-					
+
 					jsonData, err := json.Marshal(data)
-					if err!=nil{
-						fmt.Println("Error: ",err)
+					if err != nil {
+						fmt.Println("Error: ", err)
 						return
-					}	
+					}
 					encodedData := base64.StdEncoding.EncodeToString(jsonData)
 
-
-					body:= map[string]string{
+					body := map[string]string{
 						"message": "Add new request",
 						"content": encodedData,
-						"sha": sha,
+						"sha":     sha,
 					}
 
 					bodyData, _ := json.Marshal(body)
 
-					req,err := http.NewRequest("PUT",url,bytes.NewBuffer(bodyData))
-					if(err!=nil){
-						fmt.Println("Error: ",err)
+					req, err := http.NewRequest("PUT", url, bytes.NewBuffer(bodyData))
+					if err != nil {
+						fmt.Println("Error: ", err)
 						return
 					}
-					req.Header.Set("Authorization","Bearer "+githubToken)
-					req.Header.Set("Content-Type","application/json")
+					req.Header.Set("Authorization", "Bearer "+githubToken)
+					req.Header.Set("Content-Type", "application/json")
 
 					client := &http.Client{}
 
@@ -160,13 +146,13 @@ var requestCmd = &cobra.Command{
 				} else {
 					fmt.Println("Content field not found or is not a string.")
 				}
-				
+
 			}
 		}
 
-    },
+	},
 }
 
 func init() {
-    rootCmd.AddCommand(requestCmd)
+	rootCmd.AddCommand(requestCmd)
 }
