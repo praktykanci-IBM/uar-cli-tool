@@ -27,7 +27,7 @@ type Requests struct {
 
 var requestCmd = &cobra.Command{
     Use:     "request",
-    Aliases: []string{"addition"},
+    Aliases: []string{"r"},
     Short:   "Request access to repository",
     Long:    "Request access to selected repository with user ID, repository name and business justification",
     Args:    cobra.ExactArgs(3),
