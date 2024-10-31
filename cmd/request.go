@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var requestCmd = &cobra.Command{
@@ -65,7 +65,7 @@ var requestCmd = &cobra.Command{
 				fmt.Println("Repo does not exist.")
 			} else {
 				url := "https://api.github.com/repos/praktykanci-IBM/user-access-records/contents/requests.json"
-				githubToken := os.Getenv("GITHUB_PAT")
+				githubToken := viper.Get("GITHUB_PAT").(string)
 
 				resp, err := http.Get(url)
 				if err != nil {

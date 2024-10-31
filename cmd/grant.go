@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var idInstedOfName bool
@@ -176,7 +177,7 @@ var grantCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		githubToken := os.Getenv("GITHUB_PAT")
+		githubToken := viper.Get("GITHUB_PAT").(string)
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", githubToken))
 		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
