@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var requestCmd = &cobra.Command{
@@ -65,7 +64,6 @@ var requestCmd = &cobra.Command{
 				fmt.Println("Repo does not exist.")
 			} else {
 				url := "https://api.github.com/repos/praktykanci-IBM/user-access-records/contents/requests.json"
-				githubToken := viper.Get("GITHUB_PAT").(string)
 
 				resp, err := http.Get(url)
 				if err != nil {
@@ -124,7 +122,7 @@ var requestCmd = &cobra.Command{
 						fmt.Println("Error: ", err)
 						return
 					}
-					req.Header.Set("Authorization", "Bearer "+githubToken)
+					req.Header.Set("Authorization", "Bearer "+GITHUB_PAT)
 					req.Header.Set("Content-Type", "application/json")
 
 					client := &http.Client{}

@@ -11,13 +11,12 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var AddCommand = &cobra.Command{
 	Use:     "add your_id {uar_id | user repo}",
 	Short:   "Add a user as a collaborator",
-	Aliases: []string{"d"},
+	Aliases: []string{"a"},
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {
 			return fmt.Errorf("your github ID is required")
@@ -127,8 +126,7 @@ var AddCommand = &cobra.Command{
 			os.Exit(1)
 		}
 
-		githubToken := viper.Get("GITHUB_PAT").(string)
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", githubToken))
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", GITHUB_PAT))
 		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
 		res, err = http.DefaultClient.Do(req)
@@ -172,7 +170,7 @@ var AddCommand = &cobra.Command{
 			os.Exit(1)
 		}
 
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", githubToken))
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", GITHUB_PAT))
 		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
 		res, err = http.DefaultClient.Do(req)
