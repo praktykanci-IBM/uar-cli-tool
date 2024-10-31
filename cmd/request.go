@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	. "praktykanci/uar/types"
+
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
