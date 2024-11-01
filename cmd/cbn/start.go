@@ -13,21 +13,18 @@ import (
 	. "praktykanci/uar/configData"
 	. "praktykanci/uar/types"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
+var negativeRevalidation bool
 var startCmd = &cobra.Command{
-	Use:     "start owner_name repo kind_of_revalidation",
+	Use:     "start owner_name repo",
 	Short:   "Start the CBN",
 	Aliases: []string{"s"},
 	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 3 {
-			return fmt.Errorf("requires owner_name, repo and kind_of_revalidation")
-		}
-
-		if args[2] != "positive" && args[2] != "negative" {
-			return fmt.Errorf("kind_of_revalidation must be either positive or negative")
-
+		if len(args) != 2 {
+			return fmt.Errorf("requires owner_name and repo")
 		}
 
 		return nil
@@ -66,17 +63,19 @@ var startCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		var cbns []Cbn
+		var cbns CbnArray
 		err = json.Unmarshal(decodedCbn, &cbns)
 		if err != nil {
-			fmt.Print("Could not unmarshal response body\n")
+			fmt.Fprintf(os.Stderr, "Could not unmarshal response body, %v\n", err)
 			os.Exit(1)
 		}
 
-		cbns = append(cbns, Cbn{
+		CbnID := uuid.NewString()
+		cbns.Cbns = append(cbns.Cbns, Cbn{
+			CbnID:	   CbnID,
 			Owner:     args[0],
 			Repo:      args[1],
-			Kind:      args[2],
+			IsPositive: !negativeRevalidation,
 			StartDate: time.Now().Unix(),
 		})
 
@@ -96,17 +95,36 @@ var startCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		req, err := http.NewRequest("PUT", cbnUrl, bytes.NewBuffer(updateCbnsBody))
+		reqUpdateCbns, err := http.NewRequest("PUT", cbnUrl, bytes.NewBuffer(updateCbnsBody))
 		if err != nil {
 			fmt.Print("Could not make PUT request\n")
 			os.Exit(1)
 		}
 
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", GITHUB_PAT))
+		fmt.Printf("pat: %s\n", GITHUB_PAT)
 
+		reqUpdateCbns.Header.Set("Authorization", fmt.Sprintf("Bearer %s", GITHUB_PAT))
+		reqUpdateCbns.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+
+		resUpdateCbns, err := http.DefaultClient.Do(reqUpdateCbns)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not send request\n")
+		}
+		defer resUpdateCbns.Body.Close()
+
+		fmt.Printf("res: %v\n", resUpdateCbns)
+
+		if resUpdateCbns.StatusCode != 200 {
+			fmt.Fprintf(os.Stderr, "Could not create CBN\n")
+			os.Exit(1)
+		}
+
+		fmt.Print("Started new CBN\n")
+		fmt.Printf("ID of the CBN: %s\n", CbnID)
 	},
 }
 
 func init() {
+	startCmd.Flags().BoolVarP(&negativeRevalidation, "negative-revalidation", "n", false, "Use negative revalidation insted of positive")
 	CbnCommand.AddCommand(startCmd)
 }

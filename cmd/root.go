@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 	"praktykanci/uar/cmd/cbn"
+	configdata "praktykanci/uar/configData"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var rootCmd = &cobra.Command{
@@ -14,10 +14,11 @@ var rootCmd = &cobra.Command{
 	Short: "uar is a tool for managing user access records",
 }
 
-var GITHUB_PAT string
+// var GITHUB_PAT string
 
 func Execute() {
-	GITHUB_PAT = viper.GetString("GITHUB_PAT")
+	// GITHUB_PAT = viper.GetString("GITHUB_PAT")
+	configdata.Init()
 
 	// import the subcommands
 	rootCmd.AddCommand(cbn.CbnCommand)
