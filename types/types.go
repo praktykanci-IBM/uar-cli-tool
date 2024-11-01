@@ -1,4 +1,4 @@
-package cmd
+package types
 
 type GitResponseData struct {
 	Content string `json:"content"`
@@ -29,4 +29,15 @@ type GrantedRequest struct {
 }
 type GrantedRequests struct {
 	Requests []GrantedRequest `json:"grantedRequests"`
+}
+
+type Cbn struct {
+	CbnID	  string `json:"cbn_ID"`
+	Owner     string `json:"owner"`
+	Repo      string `json:"repo"`
+	IsPositive bool `json:"is_positive"`
+	StartDate int64  `json:"start_date"`
+}
+type CbnArray struct {
+	Cbns []Cbn `json:"cbns"`
 }

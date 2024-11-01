@@ -10,6 +10,9 @@ import (
 	"os"
 	"time"
 
+	. "praktykanci/uar/configData"
+	. "praktykanci/uar/types"
+
 	"github.com/spf13/cobra"
 )
 
