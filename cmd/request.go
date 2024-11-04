@@ -16,7 +16,7 @@ import (
 )
 
 var requestCmd = &cobra.Command{
-	Use:     "request",
+	Use:     "request user_name repo justification",
 	Aliases: []string{"r"},
 	Short:   "Request access to repository",
 	Long:    "Request access to selected repository with user ID, repository name and business justification",

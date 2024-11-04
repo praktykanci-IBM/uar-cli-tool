@@ -17,7 +17,7 @@ import (
 )
 
 var AddCommand = &cobra.Command{
-	Use:     "add your_id {uar_id | user repo}",
+	Use:     "add admin_name {uar_id | user_name repo}",
 	Short:   "Add a user as a collaborator",
 	Aliases: []string{"a"},
 	Args: func(cmd *cobra.Command, args []string) error {

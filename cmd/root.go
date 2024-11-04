@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"praktykanci/uar/cmd/cbn"
-	configdata "praktykanci/uar/configData"
+	"praktykanci/uar/configData"
 
 	"github.com/spf13/cobra"
 )
@@ -18,7 +18,7 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	// GITHUB_PAT = viper.GetString("GITHUB_PAT")
-	configdata.Init()
+	configData.Init()
 
 	// import the subcommands
 	rootCmd.AddCommand(cbn.CbnCommand)

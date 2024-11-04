@@ -18,7 +18,7 @@ import (
 
 var idInstedOfName bool
 var grantCmd = &cobra.Command{
-	Use:     "grant your_id {uar_id | user repo}",
+	Use:     "grant manager_name {uar_id | user_name repo}",
 	Short:   "Grant a request",
 	Aliases: []string{"g"},
 	Args: func(cmd *cobra.Command, args []string) error {
