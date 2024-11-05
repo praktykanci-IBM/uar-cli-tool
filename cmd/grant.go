@@ -1,22 +1,18 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/json"
+	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"time"
+	"praktykanci/uar/configData"
 
-	. "praktykanci/uar/configData"
-	. "praktykanci/uar/types"
+	// . "praktykanci/uar/configData"
+	// . "praktykanci/uar/types"
 
+	"github.com/google/go-github/v66/github"
 	"github.com/spf13/cobra"
 )
 
-var idInstedOfName bool
 var grantCmd = &cobra.Command{
 	Use:     "grant manager_name {uar_id | user_name repo}",
 	Short:   "Grant a request",
@@ -34,211 +30,79 @@ var grantCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		requestsUrl := "https://api.github.com/repos/praktykanci-IBM/user-access-records/contents/requests.json"
-		res, err := http.Get(requestsUrl)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not fetch requests\n")
-			os.Exit(1)
-		}
-		defer res.Body.Close()
+		// validate manager
 
-		if res.StatusCode != 200 {
-			fmt.Fprint(os.Stderr, "Could not fetch requests\n")
-			os.Exit(1)
-		}
-
-		resBodyRequests, err := io.ReadAll(res.Body)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not read response body\n")
-			os.Exit(1)
-		}
-
-		var gitResponse GitResponseData
-		err = json.Unmarshal(resBodyRequests, &gitResponse)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not unmarshal response body\n")
-			os.Exit(1)
-		}
-
-		requestsSha := gitResponse.Sha
-		decoded, err := base64.StdEncoding.DecodeString(gitResponse.Content)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not decode content\n")
-			os.Exit(1)
-		}
-
-		var requests Requests
-		err = json.Unmarshal(decoded, &requests)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not unmarshal requests\n")
-			os.Exit(1)
-		}
-
-		var approvedRequest Request
 		if len(args) == 2 {
-			for i, request := range requests.Requests {
-				if request.ID == args[1] {
-					approvedRequest = requests.Requests[i]
-
-					requests.Requests[i] = requests.Requests[len(requests.Requests)-1]
-					requests.Requests = requests.Requests[:len(requests.Requests)-1]
-
-					break
-				}
-			}
+			grantByUarID(args[1])
 		} else {
-			for i, request := range requests.Requests {
-				if request.Name == args[1] && request.Repo == args[2] {
-					approvedRequest = requests.Requests[i]
-
-					requests.Requests[i] = requests.Requests[len(requests.Requests)-1]
-					requests.Requests = requests.Requests[:len(requests.Requests)-1]
-
-					break
-				}
-			}
+			grantByUserAndRepo(args[1], args[2])
 		}
 
-		if approvedRequest.ID == "" {
-			fmt.Fprint(os.Stderr, "Could not find request\n")
-			os.Exit(1)
-		}
-
-		acceptedUrl := "https://api.github.com/repos/praktykanci-IBM/user-access-records/contents/granted.json"
-		res, err = http.Get(acceptedUrl)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not fetch granted requests\n")
-			os.Exit(1)
-		}
-		defer res.Body.Close()
-
-		if res.StatusCode != 200 {
-			fmt.Fprint(os.Stderr, "Could not fetch granted requests\n")
-			os.Exit(1)
-		}
-
-		resBodyGranted, err := io.ReadAll(res.Body)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not read response body\n")
-			os.Exit(1)
-		}
-
-		err = json.Unmarshal(resBodyGranted, &gitResponse)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not unmarshal response body\n")
-			os.Exit(1)
-		}
-
-		grantedSha := gitResponse.Sha
-		decoded, err = base64.StdEncoding.DecodeString(gitResponse.Content)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not decode content\n")
-			os.Exit(1)
-		}
-
-		var grantedRequests GrantedRequests
-		err = json.Unmarshal(decoded, &grantedRequests)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not unmarshal granted requests\n")
-			os.Exit(1)
-		}
-
-		grantedRequests.Requests = append(grantedRequests.Requests, GrantedRequest{
-			Name:          approvedRequest.Name,
-			WhenRequested: approvedRequest.When,
-			WhenAccepted:  time.Now().Unix(),
-			Justification: approvedRequest.Justification,
-			Repo:          approvedRequest.Repo,
-			ID:            approvedRequest.ID,
-			ApproverID:    args[0],
-			AdminID:       "",
-			WhenCompleted: 0,
-		})
-
-		grantedJson, err := json.Marshal(grantedRequests)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not marshal granted requests\n")
-			os.Exit(1)
-		}
-
-		encodedGranted := base64.StdEncoding.EncodeToString(grantedJson)
-
-		reqBody, err := json.Marshal(map[string]string{
-			"message": "Approve request",
-			"content": encodedGranted,
-			"sha":     grantedSha,
-		})
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not marshal request body\n")
-			os.Exit(1)
-		}
-
-		req, err := http.NewRequest("PUT", acceptedUrl, bytes.NewBuffer(reqBody))
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not create request\n")
-			os.Exit(1)
-		}
-
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", GITHUB_PAT))
-		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-
-		res, err = http.DefaultClient.Do(req)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not send request\n")
-			os.Exit(1)
-		}
-		defer res.Body.Close()
-
-		if res.StatusCode != 200 {
-			fmt.Fprint(os.Stderr, "Could not grant request\n")
-			os.Exit(1)
-		}
-
-		requestsJson, err := json.Marshal(requests)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not marshal requests\n")
-			os.Exit(1)
-		}
-
-		encodedRequests := base64.StdEncoding.EncodeToString(requestsJson)
-
-		reqBody, err = json.Marshal(map[string]string{
-			"message": "Remove request",
-			"content": encodedRequests,
-			"sha":     requestsSha,
-		})
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not marshal request body\n")
-			os.Exit(1)
-		}
-
-		req, err = http.NewRequest("PUT", requestsUrl, bytes.NewBuffer(reqBody))
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not create request\n")
-			os.Exit(1)
-		}
-
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", GITHUB_PAT))
-		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-
-		res, err = http.DefaultClient.Do(req)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not send request\n")
-			os.Exit(1)
-		}
-		defer res.Body.Close()
-
-		if res.StatusCode != 200 {
-			fmt.Fprint(os.Stderr, "Could not remove request\n")
-			os.Exit(1)
-		}
-
-		fmt.Printf("Request granted successfully\n")
-		fmt.Printf("ID of the request: %s\n", approvedRequest.ID)
+		os.Exit(0)
 	},
 }
 
 func init() {
-	grantCmd.Flags().BoolVarP(&idInstedOfName, "id", "i", false, "Find user by ID instead of name")
 	rootCmd.AddCommand(grantCmd)
+}
+
+func grantByUarID(uarID string) {
+	fmt.Printf("Granting request with UAR ID %s\n", uarID)
+}
+
+func grantByUserAndRepo(user string, repo string) {
+	fmt.Printf("Granting request for user %s and repo %s\n", user, repo)
+
+	githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
+
+	// repoOwner, repoName := strings.Split(repo, "/")[0], strings.Split(repo, "/")[1]
+
+	branches, _, err := githubClient.Repositories.ListBranches(context.Background(), "praktykanci-IBM", "user-access-records", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	var requestBranch *github.Branch
+
+	for _, branch := range branches {
+		if *branch.Name == fmt.Sprintf("%s/%s", repo, user) {
+			requestBranch = branch
+			break
+		}
+	}
+
+	if requestBranch == nil {
+		fmt.Fprintf(os.Stderr, "Error: branch not found\n")
+		os.Exit(1)
+	}
+
+	pullRequests, _, err := githubClient.PullRequests.ListPullRequestsWithCommit(context.Background(), "praktykanci-IBM", "user-access-records", *requestBranch.Commit.SHA, nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	_, _, err = githubClient.PullRequests.CreateReview(context.Background(), "praktykanci-IBM", "user-access-records", *pullRequests[0].Number, &github.PullRequestReviewRequest{
+		Body:  github.String("access granted"),
+		Event: github.String("APPROVE"),
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	_, _, err = githubClient.PullRequests.Merge(context.Background(), "praktykanci-IBM", "user-access-records", *pullRequests[0].Number, "access granted", &github.PullRequestOptions{
+		MergeMethod: "merge",
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	_, err = githubClient.Git.DeleteRef(context.Background(), "praktykanci-IBM", "user-access-records", fmt.Sprintf("heads/%s", *requestBranch.Name))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }
