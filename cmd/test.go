@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	"praktykanci/uar/configData"
 	. "praktykanci/uar/configData"
 	. "praktykanci/uar/types"
 
@@ -20,7 +21,7 @@ var testCommand = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Test command")
 		githubClient := github.NewClient(nil).WithAuthToken(GITHUB_PAT)
-		fContent, dContent, res, err := githubClient.Repositories.GetContents(context.Background(), "praktykanci-IBM", "user-access-records", "granted.json", nil)
+		fContent, dContent, res, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "granted.json", nil)
 		if err != nil {
 			fmt.Fprint(os.Stderr, "Could not fetch granted requests\n")
 			os.Exit(1)
