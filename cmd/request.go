@@ -1,18 +1,20 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/json"
+	"context"
 	"fmt"
-	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	. "praktykanci/uar/configData"
+	"praktykanci/uar/enums"
 	. "praktykanci/uar/types"
 
+	"github.com/google/go-github/v66/github"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var requestCmd = &cobra.Command{
@@ -23,133 +25,154 @@ var requestCmd = &cobra.Command{
 	Args:    cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
 
-		//check if user exists
-		username := args[0]
-		url := fmt.Sprintf("https://api.github.com/users/%s", username)
-		resp, err := http.Get(url)
+        
+        githubClient := github.NewClient(nil).WithAuthToken(GITHUB_PAT)
 
-		if err != nil {
-			fmt.Println("Error:", err)
+        _, _, err := githubClient.Users.Get(context.Background(), args[0])
+
+        if err!=nil{
+            fmt.Println("Error:", err)
+            return
+        }
+
+
+        _, _, err = githubClient.Repositories.Get(context.Background(),strings.Split(args[1], "/")[0],strings.Split(args[1], "/")[1])
+
+        if err!=nil{
+            fmt.Println("Error:",err)
+            return
+        }
+
+		id := uuid.New().String()
+
+		newRequest := RequestData{
+			ID: id,
+			Status: enums.Requested,
+		}
+		
+
+		content,err := yaml.Marshal(&newRequest)
+		if err!=nil{
+			fmt.Println("Error:",err)
 			return
 		}
-		defer resp.Body.Close()
 
-		var result map[string]interface{}
 
-		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-			fmt.Println("Error decoding JSON:", err)
-			return
+		        // Check if branch exists
+        branchName := fmt.Sprintf("%s/%s/%s",strings.Split(args[1], "/")[0],strings.Split(args[1], "/")[1],args[0]) // replace with desired branch name
+        _, _, err = githubClient.Repositories.GetBranch(context.Background(), "praktykanci-IBM", "user-access-records", branchName, 0)
+        if err != nil { // Branch does not exist, so create it
+            // Retrieve the reference for the main branch
+            baseRef, _, err := githubClient.Git.GetRef(context.Background(), "praktykanci-IBM", "user-access-records", "refs/heads/main")
+            if err != nil {
+                fmt.Println("Error fetching base reference:", err)
+                return
+            }
+
+            // Create new branch reference
+            newRef := &github.Reference{
+                Ref:    github.String("refs/heads/" + branchName),
+                Object: &github.GitObject{SHA: baseRef.Object.SHA},
+            }
+            _, _, err = githubClient.Git.CreateRef(context.Background(), "praktykanci-IBM", "user-access-records", newRef)
+            if err != nil {
+                fmt.Println("Error creating branch:", err)
+                return
+            }
+            fmt.Println("Branch created successfully!")
+        }else{
+			fmt.Println("Request for this user and repository already exists!")
+            return
 		}
 
-		if message, ok := result["message"]; ok && message == "Not Found" {
-			fmt.Println("User does not exist.")
-		} else {
-			//check if repo exists
-			repo := args[1]
+		time.Sleep(10 * time.Second)
 
-			url := fmt.Sprintf("https://api.github.com/repos/%s", repo)
-			resp, err := http.Get(url)
 
+
+
+        commitMessage:= "Created a file with request data"
+        options:= &github.RepositoryContentFileOptions{
+            Message: github.String(commitMessage),
+            Content: content,
+            Branch: github.String(fmt.Sprintf("%s/%s/%s",strings.Split(args[1], "/")[0],strings.Split(args[1], "/")[1],args[0])),
+        }
+
+		newPR := &github.NewPullRequest{
+            Title: github.String("Request access"),
+            Head:  github.String(fmt.Sprintf("%s/%s/%s",strings.Split(args[1], "/")[0],strings.Split(args[1], "/")[1],args[0])), // The branch with the new file
+            Base:  github.String("main"),     // The main branch
+            Body:  github.String("This pull request adds a new access request"),
+        }
+
+
+        _, _, _,err = githubClient.Repositories.GetContents(context.Background(),"praktykanci-IBM","user-access-records",strings.Split(args[1], "/")[0],nil)
+
+        if err!=nil{
+            
+            
+            _,_,err := githubClient.Repositories.CreateFile(context.Background(),"praktykanci-IBM","user-access-records",fmt.Sprintf("%s/%s/%s.yaml",strings.Split(args[1], "/")[0],strings.Split(args[1], "/")[1],args[0]),options)
+            if err != nil {
+                fmt.Println("Error:",err)
+            }
+            _, _, err = githubClient.PullRequests.Create(context.Background(),"praktykanci-IBM","user-access-records", newPR)
 			if err != nil {
-				fmt.Println("Error:", err)
+				fmt.Println("Error creating pull request:", err)
 				return
 			}
-			defer resp.Body.Close()
+			fmt.Println("Request added successfully.")
+			fmt.Println("ID of your request:", id)
+			
+            return
+        }
 
-			var result map[string]interface{}
+        _,userDirContent,_,err := githubClient.Repositories.GetContents(context.Background(),"praktykanci-IBM","user-access-records",fmt.Sprintf("%s/%s",strings.Split(args[1], "/")[0],strings.Split(args[1], "/")[1]),nil)
+        
+        if err!=nil{
+          
+            
+            _,_,err := githubClient.Repositories.CreateFile(context.Background(),"praktykanci-IBM","user-access-records",fmt.Sprintf("%s/%s/%s.yaml",strings.Split(args[1], "/")[0],strings.Split(args[1], "/")[1],args[0]),options)
+            if err != nil {
+                fmt.Println("Error:",err)
+            }
 
-			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-				fmt.Println("Error decoding JSON:", err)
+			_, _, err = githubClient.PullRequests.Create(context.Background(),"praktykanci-IBM","user-access-records", newPR)
+			if err != nil {
+				fmt.Println("Error creating pull request:", err)
 				return
 			}
+			fmt.Println("Request added successfully.")
+			fmt.Println("ID of your request:", id)
 
-			if message, ok := result["message"]; ok && message == "Not Found" {
-				fmt.Println("Repo does not exist.")
-			} else {
-				url := "https://api.github.com/repos/praktykanci-IBM/user-access-records/contents/requests.json"
+            return
+        }
 
-				resp, err := http.Get(url)
-				if err != nil {
-					fmt.Println("Error:", err)
-					return
-				}
-				defer resp.Body.Close()
+        for _, content := range userDirContent {
+            if content.Type != nil{
+                if(*content.Name == fmt.Sprintf("%v.yaml",args[0])){
+                    fmt.Println("Request for this user and repository already exists!")
+                    return
+                }
+            }
+        }
 
-				var result map[string]interface{}
-				if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-					fmt.Println("Error decoding JSON:", err)
-					return
-				}
+        
+            
+        _,_,err = githubClient.Repositories.CreateFile(context.Background(),"praktykanci-IBM","user-access-records",fmt.Sprintf("%s/%s/%s.yaml",strings.Split(args[1], "/")[0],strings.Split(args[1], "/")[1],args[0]),options)
+        if err != nil {
+            fmt.Println("Error:",err)
+        }
 
-				if encodedContent, ok := result["content"].(string); ok {
-					decodedContent, err := base64.StdEncoding.DecodeString(encodedContent)
-					if err != nil {
-						fmt.Println("Error decoding Base64 content:", err)
-						return
-					}
-					sha := result["sha"].(string)
-					var data Requests
-					errr := json.Unmarshal(decodedContent, &data)
-					if errr != nil {
-						fmt.Println("Error", errr)
-						return
-					}
-					id := uuid.New().String()
-					newRequest := Request{
-						Name:          username,
-						When:          time.Now().Unix(),
-						Justification: args[2],
-						Repo:          repo,
-						ID:            id,
-					}
+		_, _, err = githubClient.PullRequests.Create(context.Background(),"praktykanci-IBM","user-access-records", newPR)
+        if err != nil {
+            fmt.Println("Error creating pull request:", err)
+            return
+        }
 
-					data.Requests = append(data.Requests, newRequest)
+        fmt.Println("Request added successfully.")
+		fmt.Println("ID of your request:", id)
 
-					jsonData, err := json.Marshal(data)
-					if err != nil {
-						fmt.Println("Error: ", err)
-						return
-					}
-					encodedData := base64.StdEncoding.EncodeToString(jsonData)
 
-					body := map[string]string{
-						"message": "Add new request",
-						"content": encodedData,
-						"sha":     sha,
-					}
-
-					bodyData, _ := json.Marshal(body)
-
-					req, err := http.NewRequest("PUT", url, bytes.NewBuffer(bodyData))
-					if err != nil {
-						fmt.Println("Error: ", err)
-						return
-					}
-					req.Header.Set("Authorization", "Bearer "+GITHUB_PAT)
-					req.Header.Set("Content-Type", "application/json")
-
-					client := &http.Client{}
-
-					resp, err := client.Do(req)
-					if err != nil {
-						fmt.Println("Error making PUT request:", err)
-						return
-					}
-					defer resp.Body.Close()
-
-					if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
-						fmt.Println("Request added successfully.")
-						fmt.Println("ID of your request:", newRequest.ID)
-					} else {
-						fmt.Printf("Failed to update file. Status: %s\n", resp.Status)
-					}
-
-				} else {
-					fmt.Println("Content field not found or is not a string.")
-				}
-
-			}
-		}
+        os.Exit(0)
 
 	},
 }
