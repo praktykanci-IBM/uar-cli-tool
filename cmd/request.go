@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	. "praktykanci/uar/configData"
 	"praktykanci/uar/enums"
@@ -48,6 +49,7 @@ var requestCmd = &cobra.Command{
 			ID: id,
 			Status: enums.Requested,
 		}
+		
 
 		content,err := yaml.Marshal(&newRequest)
 		if err!=nil{
@@ -55,12 +57,53 @@ var requestCmd = &cobra.Command{
 			return
 		}
 
+
+		        // Check if branch exists
+        branchName := fmt.Sprintf("%s/%s/%s",strings.Split(args[1], "/")[0],strings.Split(args[1], "/")[1],args[0]) // replace with desired branch name
+        _, _, err = githubClient.Repositories.GetBranch(context.Background(), "praktykanci-IBM", "user-access-records", branchName, 0)
+        if err != nil { // Branch does not exist, so create it
+            // Retrieve the reference for the main branch
+            baseRef, _, err := githubClient.Git.GetRef(context.Background(), "praktykanci-IBM", "user-access-records", "refs/heads/main")
+            if err != nil {
+                fmt.Println("Error fetching base reference:", err)
+                return
+            }
+
+            // Create new branch reference
+            newRef := &github.Reference{
+                Ref:    github.String("refs/heads/" + branchName),
+                Object: &github.GitObject{SHA: baseRef.Object.SHA},
+            }
+            _, _, err = githubClient.Git.CreateRef(context.Background(), "praktykanci-IBM", "user-access-records", newRef)
+            if err != nil {
+                fmt.Println("Error creating branch:", err)
+                return
+            }
+            fmt.Println("Branch created successfully!")
+        }else{
+			fmt.Println("Request for this user and repository already exists!")
+            return
+		}
+
+		time.Sleep(10 * time.Second)
+
+
+
+
         commitMessage:= "Created a file with request data"
         options:= &github.RepositoryContentFileOptions{
             Message: github.String(commitMessage),
             Content: content,
-            Branch: github.String("main"),
+            Branch: github.String(fmt.Sprintf("%s/%s/%s",strings.Split(args[1], "/")[0],strings.Split(args[1], "/")[1],args[0])),
         }
+
+		newPR := &github.NewPullRequest{
+            Title: github.String("Request access"),
+            Head:  github.String(fmt.Sprintf("%s/%s/%s",strings.Split(args[1], "/")[0],strings.Split(args[1], "/")[1],args[0])), // The branch with the new file
+            Base:  github.String("main"),     // The main branch
+            Body:  github.String("This pull request adds a new access request"),
+        }
+
 
         _, _, _,err = githubClient.Repositories.GetContents(context.Background(),"praktykanci-IBM","user-access-records",strings.Split(args[1], "/")[0],nil)
 
@@ -71,7 +114,14 @@ var requestCmd = &cobra.Command{
             if err != nil {
                 fmt.Println("Error:",err)
             }
-            fmt.Println("Folder created successfully!")
+            _, _, err = githubClient.PullRequests.Create(context.Background(),"praktykanci-IBM","user-access-records", newPR)
+			if err != nil {
+				fmt.Println("Error creating pull request:", err)
+				return
+			}
+			fmt.Println("Request added successfully.")
+			fmt.Println("ID of your request:", id)
+			
             return
         }
 
@@ -84,7 +134,15 @@ var requestCmd = &cobra.Command{
             if err != nil {
                 fmt.Println("Error:",err)
             }
-            fmt.Println("Folder created successfully!")
+
+			_, _, err = githubClient.PullRequests.Create(context.Background(),"praktykanci-IBM","user-access-records", newPR)
+			if err != nil {
+				fmt.Println("Error creating pull request:", err)
+				return
+			}
+			fmt.Println("Request added successfully.")
+			fmt.Println("ID of your request:", id)
+
             return
         }
 
@@ -103,6 +161,13 @@ var requestCmd = &cobra.Command{
         if err != nil {
             fmt.Println("Error:",err)
         }
+
+		_, _, err = githubClient.PullRequests.Create(context.Background(),"praktykanci-IBM","user-access-records", newPR)
+        if err != nil {
+            fmt.Println("Error creating pull request:", err)
+            return
+        }
+
         fmt.Println("Request added successfully.")
 		fmt.Println("ID of your request:", id)
 
