@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	. "praktykanci/uar/configData"
-	"praktykanci/uar/enums"
 	. "praktykanci/uar/types"
 
 	"github.com/google/go-github/v66/github"
@@ -44,7 +43,7 @@ var requestCmd = &cobra.Command{
 
 		newRequest := RequestData{
 			ID:     id,
-			Status: enums.Granted,
+			Added: true,
 		}
 
 		content, err := yaml.Marshal(&newRequest)
