@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"praktykanci/uar/configData"
+	"strings"
 
 	// . "praktykanci/uar/configData"
 	// . "praktykanci/uar/types"
@@ -32,10 +33,12 @@ var grantCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// validate manager
 
+		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
+
 		if len(args) == 2 {
-			grantByUarID(args[1])
+			grantByUarID(args[1], githubClient)
 		} else {
-			grantByUserAndRepo(args[1], args[2])
+			grantByUserAndRepo(args[1], args[2], githubClient)
 		}
 
 		os.Exit(0)
@@ -46,17 +49,48 @@ func init() {
 	rootCmd.AddCommand(grantCmd)
 }
 
-func grantByUarID(uarID string) {
-	fmt.Printf("Granting request with UAR ID %s\n", uarID)
+func grantByUarID(uarID string, githubClient *github.Client) {
+	branches, _, err := githubClient.Repositories.ListBranches(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	var requestBranch *github.Branch
+
+Outer:
+	for _, branch := range branches {
+		pullRequests, _, err := githubClient.PullRequests.ListPullRequestsWithCommit(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, *branch.Commit.SHA, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		for _, pullRequest := range pullRequests {
+			splittedTitle := strings.Split(*pullRequest.Title, " - ")
+			if len(splittedTitle) != 2 {
+				continue
+			}
+			id := splittedTitle[1]
+
+			if id == uarID {
+				requestBranch = branch
+				break Outer
+			}
+		}
+	}
+
+	if requestBranch == nil {
+		fmt.Fprintf(os.Stderr, "Error: branch not found\n")
+		os.Exit(1)
+	}
+
+	grantAccess(*requestBranch.Commit.SHA, *requestBranch.Name, githubClient)
+
+	fmt.Printf("Access granted to UAR ID %s\n", uarID)
 }
 
-func grantByUserAndRepo(user string, repo string) {
-	fmt.Printf("Granting request for user %s and repo %s\n", user, repo)
-
-	githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
-
-	// repoOwner, repoName := strings.Split(repo, "/")[0], strings.Split(repo, "/")[1]
-
+func grantByUserAndRepo(user string, repo string, githubClient *github.Client) {
 	branches, _, err := githubClient.Repositories.ListBranches(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -77,7 +111,13 @@ func grantByUserAndRepo(user string, repo string) {
 		os.Exit(1)
 	}
 
-	pullRequests, _, err := githubClient.PullRequests.ListPullRequestsWithCommit(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, *requestBranch.Commit.SHA, nil)
+	grantAccess(*requestBranch.Commit.SHA, *requestBranch.Name, githubClient)
+
+	fmt.Printf("Access granted to %s on %s\n", user, repo)
+}
+
+func grantAccess(commitSHA string, brachName string, githubClient *github.Client) {
+	pullRequests, _, err := githubClient.PullRequests.ListPullRequestsWithCommit(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, commitSHA, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -100,7 +140,7 @@ func grantByUserAndRepo(user string, repo string) {
 		os.Exit(1)
 	}
 
-	_, err = githubClient.Git.DeleteRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("heads/%s", *requestBranch.Name))
+	_, err = githubClient.Git.DeleteRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("heads/%s", brachName))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
