@@ -7,9 +7,6 @@ import (
 	"praktykanci/uar/configData"
 	"strings"
 
-	// . "praktykanci/uar/configData"
-	// . "praktykanci/uar/types"
-
 	"github.com/google/go-github/v66/github"
 	"github.com/spf13/cobra"
 )
@@ -116,7 +113,7 @@ func grantByUserAndRepo(user string, repo string, githubClient *github.Client) {
 	fmt.Printf("Access granted to %s on %s\n", user, repo)
 }
 
-func grantAccess(commitSHA string, brachName string, githubClient *github.Client) {
+func grantAccess(commitSHA string, branchName string, githubClient *github.Client) {
 	pullRequests, _, err := githubClient.PullRequests.ListPullRequestsWithCommit(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, commitSHA, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -140,7 +137,7 @@ func grantAccess(commitSHA string, brachName string, githubClient *github.Client
 		os.Exit(1)
 	}
 
-	_, err = githubClient.Git.DeleteRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("heads/%s", brachName))
+	_, err = githubClient.Git.DeleteRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("heads/%s", branchName))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
