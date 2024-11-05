@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"praktykanci/uar/configData"
 	. "praktykanci/uar/configData"
 	"praktykanci/uar/enums"
 	. "praktykanci/uar/types"
@@ -55,10 +56,10 @@ var requestCmd = &cobra.Command{
 
 		// Check if branch exists
 		branchName := fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]) // replace with desired branch name
-		_, _, err = githubClient.Repositories.GetBranch(context.Background(), "praktykanci-IBM", "user-access-records", branchName, 0)
+		_, _, err = githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, branchName, 0)
 		if err != nil { // Branch does not exist, so create it
 			// Retrieve the reference for the main branch
-			baseRef, _, err := githubClient.Git.GetRef(context.Background(), "praktykanci-IBM", "user-access-records", "refs/heads/main")
+			baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "refs/heads/main")
 			if err != nil {
 				fmt.Println("Error fetching base reference:", err)
 				return
@@ -69,7 +70,7 @@ var requestCmd = &cobra.Command{
 				Ref:    github.String("refs/heads/" + branchName),
 				Object: &github.GitObject{SHA: baseRef.Object.SHA},
 			}
-			_, _, err = githubClient.Git.CreateRef(context.Background(), "praktykanci-IBM", "user-access-records", newRef)
+			_, _, err = githubClient.Git.CreateRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newRef)
 			if err != nil {
 				fmt.Println("Error creating branch:", err)
 				return
@@ -94,15 +95,15 @@ var requestCmd = &cobra.Command{
 			Body:  github.String("This pull request adds a new access request"),
 		}
 
-		_, _, _, err = githubClient.Repositories.GetContents(context.Background(), "praktykanci-IBM", "user-access-records", strings.Split(args[1], "/")[0], nil)
+		_, _, _, err = githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, strings.Split(args[1], "/")[0], nil)
 
 		if err != nil {
 
-			_, _, err := githubClient.Repositories.CreateFile(context.Background(), "praktykanci-IBM", "user-access-records", fmt.Sprintf("%s/%s/%s.yaml", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]), options)
+			_, _, err := githubClient.Repositories.CreateFile(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s/%s.yaml", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]), options)
 			if err != nil {
 				fmt.Println("Error:", err)
 			}
-			_, _, err = githubClient.PullRequests.Create(context.Background(), "praktykanci-IBM", "user-access-records", newPR)
+			_, _, err = githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newPR)
 			if err != nil {
 				fmt.Println("Error creating pull request:", err)
 				return
@@ -113,16 +114,16 @@ var requestCmd = &cobra.Command{
 			return
 		}
 
-		_, userDirContent, _, err := githubClient.Repositories.GetContents(context.Background(), "praktykanci-IBM", "user-access-records", fmt.Sprintf("%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1]), nil)
+		_, userDirContent, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1]), nil)
 
 		if err != nil {
 
-			_, _, err := githubClient.Repositories.CreateFile(context.Background(), "praktykanci-IBM", "user-access-records", fmt.Sprintf("%s/%s/%s.yaml", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]), options)
+			_, _, err := githubClient.Repositories.CreateFile(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s/%s.yaml", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]), options)
 			if err != nil {
 				fmt.Println("Error:", err)
 			}
 
-			_, _, err = githubClient.PullRequests.Create(context.Background(), "praktykanci-IBM", "user-access-records", newPR)
+			_, _, err = githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newPR)
 			if err != nil {
 				fmt.Println("Error creating pull request:", err)
 				return
@@ -142,12 +143,12 @@ var requestCmd = &cobra.Command{
 			}
 		}
 
-		_, _, err = githubClient.Repositories.CreateFile(context.Background(), "praktykanci-IBM", "user-access-records", fmt.Sprintf("%s/%s/%s.yaml", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]), options)
+		_, _, err = githubClient.Repositories.CreateFile(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s/%s.yaml", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]), options)
 		if err != nil {
 			fmt.Println("Error:", err)
 		}
 
-		_, _, err = githubClient.PullRequests.Create(context.Background(), "praktykanci-IBM", "user-access-records", newPR)
+		_, _, err = githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newPR)
 		if err != nil {
 			fmt.Println("Error creating pull request:", err)
 			return

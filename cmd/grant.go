@@ -57,7 +57,7 @@ func grantByUserAndRepo(user string, repo string) {
 
 	// repoOwner, repoName := strings.Split(repo, "/")[0], strings.Split(repo, "/")[1]
 
-	branches, _, err := githubClient.Repositories.ListBranches(context.Background(), "praktykanci-IBM", "user-access-records", nil)
+	branches, _, err := githubClient.Repositories.ListBranches(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -77,13 +77,13 @@ func grantByUserAndRepo(user string, repo string) {
 		os.Exit(1)
 	}
 
-	pullRequests, _, err := githubClient.PullRequests.ListPullRequestsWithCommit(context.Background(), "praktykanci-IBM", "user-access-records", *requestBranch.Commit.SHA, nil)
+	pullRequests, _, err := githubClient.PullRequests.ListPullRequestsWithCommit(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, *requestBranch.Commit.SHA, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	_, _, err = githubClient.PullRequests.CreateReview(context.Background(), "praktykanci-IBM", "user-access-records", *pullRequests[0].Number, &github.PullRequestReviewRequest{
+	_, _, err = githubClient.PullRequests.CreateReview(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, *pullRequests[0].Number, &github.PullRequestReviewRequest{
 		Body:  github.String("access granted"),
 		Event: github.String("APPROVE"),
 	})
@@ -92,7 +92,7 @@ func grantByUserAndRepo(user string, repo string) {
 		os.Exit(1)
 	}
 
-	_, _, err = githubClient.PullRequests.Merge(context.Background(), "praktykanci-IBM", "user-access-records", *pullRequests[0].Number, "access granted", &github.PullRequestOptions{
+	_, _, err = githubClient.PullRequests.Merge(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, *pullRequests[0].Number, "access granted", &github.PullRequestOptions{
 		MergeMethod: "merge",
 	})
 	if err != nil {
@@ -100,7 +100,7 @@ func grantByUserAndRepo(user string, repo string) {
 		os.Exit(1)
 	}
 
-	_, err = githubClient.Git.DeleteRef(context.Background(), "praktykanci-IBM", "user-access-records", fmt.Sprintf("heads/%s", *requestBranch.Name))
+	_, err = githubClient.Git.DeleteRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("heads/%s", *requestBranch.Name))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
