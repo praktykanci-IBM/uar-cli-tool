@@ -1,10 +1,15 @@
 package types
 
+import . "praktykanci/uar/enums"
+
 type GitResponseData struct {
 	Content string `json:"content"`
 	Sha     string `json:"sha"`
 }
-
+type RequestData struct {
+	ID     string       `yaml:"id"`
+	Status RequestState `yaml:"status"`
+}
 type Request struct {
 	Name          string `json:"name"`
 	When          int64  `json:"when"`
@@ -32,11 +37,11 @@ type GrantedRequests struct {
 }
 
 type Cbn struct {
-	CbnID	  string `json:"cbn_ID"`
-	Owner     string `json:"owner"`
-	Repo      string `json:"repo"`
-	IsPositive bool `json:"is_positive"`
-	StartDate int64  `json:"start_date"`
+	CbnID      string `json:"cbn_ID"`
+	Owner      string `json:"owner"`
+	Repo       string `json:"repo"`
+	IsPositive bool   `json:"is_positive"`
+	StartDate  int64  `json:"start_date"`
 }
 type CbnArray struct {
 	Cbns []Cbn `json:"cbns"`

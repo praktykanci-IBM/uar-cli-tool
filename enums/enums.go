@@ -1,20 +1,20 @@
 package enums
 
-type requestState int
+type RequestState int
 
 const (
-	Requested requestState = iota
+	Requested RequestState = iota
 	Granted
 	Added
 )
 
-var stateName = map[requestState]string{
+var stateName = map[RequestState]string{
 	Requested: "requested",
 	Granted:   "granted",
 	Added:     "added",
 }
 
-func (rs requestState) String() string {
+func (rs RequestState) String() string {
 	if name, ok := stateName[rs]; ok {
 		return name
 	}
