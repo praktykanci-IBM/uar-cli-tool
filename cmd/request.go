@@ -43,8 +43,8 @@ var requestCmd = &cobra.Command{
 		id := uuid.New().String()
 
 		newRequest := RequestData{
-			ID:     id,
-			Added: true,
+			ID:    id,
+			Added: false,
 		}
 
 		content, err := yaml.Marshal(&newRequest)
@@ -88,7 +88,7 @@ var requestCmd = &cobra.Command{
 		}
 
 		newPR := &github.NewPullRequest{
-			Title: github.String("Request access"),
+			Title: github.String(fmt.Sprintf("Request access - %s", id)),
 			Head:  github.String(fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0])), // The branch with the new file
 			Base:  github.String("main"),                                                                                           // The main branch
 			Body:  github.String("This pull request adds a new access request"),
