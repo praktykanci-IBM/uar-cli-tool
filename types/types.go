@@ -1,14 +1,12 @@
 package types
 
-import . "praktykanci/uar/enums"
-
 type GitResponseData struct {
 	Content string `json:"content"`
 	Sha     string `json:"sha"`
 }
 type RequestData struct {
-	ID     string       `yaml:"id"`
-	Status RequestState `yaml:"status"`
+	ID    string `yaml:"id"`
+	Added bool   `yaml:"status"`
 }
 type Request struct {
 	Name          string `json:"name"`
