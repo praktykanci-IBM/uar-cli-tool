@@ -3,15 +3,13 @@ package enums
 type RequestState int
 
 const (
-	Requested RequestState = iota
-	Granted
+	Granted RequestState = iota
 	Added
 )
 
 var stateName = map[RequestState]string{
-	Requested: "requested",
-	Granted:   "granted",
-	Added:     "added",
+	Granted: "granted",
+	Added:   "added",
 }
 
 func (rs RequestState) String() string {

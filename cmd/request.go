@@ -44,7 +44,7 @@ var requestCmd = &cobra.Command{
 
 		newRequest := RequestData{
 			ID:     id,
-			Status: enums.Requested,
+			Status: enums.Granted,
 		}
 
 		content, err := yaml.Marshal(&newRequest)
