@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"praktykanci/uar/configData"
 	. "praktykanci/uar/configData"
@@ -17,16 +18,25 @@ import (
 )
 
 var requestCmd = &cobra.Command{
-	Use:     "request user_name repo justification",
+	Use:     "request user_name repo justification manager_name",
 	Aliases: []string{"r"},
 	Short:   "Request access to repository",
-	Long:    "Request access to selected repository with user ID, repository name and business justification",
-	Args:    cobra.ExactArgs(3),
+	Long:    "Request access to selected repository with user ID, repository name, business justification and manager name",
+	Args:    cobra.ExactArgs(4),
 	Run: func(cmd *cobra.Command, args []string) {
 
 		githubClient := github.NewClient(nil).WithAuthToken(GITHUB_PAT)
 
-		_, _, err := githubClient.Users.Get(context.Background(), args[0])
+        isCollaborator, _, err := githubClient.Repositories.IsCollaborator(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, args[3])
+        if err != nil {
+            fmt.Println("Error: ",err)
+        }
+
+        if !isCollaborator {
+            fmt.Printf("Invalid manager name")
+        }
+
+		_, _, err = githubClient.Users.Get(context.Background(), args[0])
 
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -45,6 +55,8 @@ var requestCmd = &cobra.Command{
 		newRequest := RequestData{
 			ID:    id,
 			Added: false,
+            Justification: args[2],
+            WhenRequested: time.Now().Unix(),
 		}
 
 		content, err := yaml.Marshal(&newRequest)
@@ -68,7 +80,7 @@ var requestCmd = &cobra.Command{
 			Title: github.String(fmt.Sprintf("Request access - %s", id)),
 			Head:  github.String(fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0])), 
 			Base:  github.String("main"),                                                                                           
-			Body:  github.String(fmt.Sprintf("User %s requests access to repository %s", args[0],args[1])),
+			Body:  github.String(fmt.Sprintf("User %s requests access to repository %s. Business justification: %s", args[0],args[1], args[2])),
 		}
 
 		_, _, _, err = githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, strings.Split(args[1], "/")[0], nil)
@@ -103,11 +115,22 @@ var requestCmd = &cobra.Command{
 			if err != nil {
 				fmt.Println("Error:", err)
 			}
-			_, _, err = githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newPR)
+			pr, _, err := githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newPR)
 			if err != nil {
 				fmt.Println("Error creating pull request:", err)
 				return
 			}
+
+            reviewers := github.ReviewersRequest{
+                Reviewers: []string{args[3]},
+            }
+            _, _, err = githubClient.PullRequests.RequestReviewers(context.Background(), "praktykanci-IBM", "user-access-records", pr.GetNumber(), reviewers)
+            if err != nil {
+                fmt.Println("Error adding reviewers:", err)
+                return
+            }
+
+
 			fmt.Println("Request added successfully.")
 			fmt.Println("ID of your request:", id)
 
@@ -145,11 +168,20 @@ var requestCmd = &cobra.Command{
 				fmt.Println("Error:", err)
 			}
 
-			_, _, err = githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newPR)
+			pr, _, err := githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newPR)
 			if err != nil {
 				fmt.Println("Error creating pull request:", err)
 				return
 			}
+
+            reviewers := github.ReviewersRequest{
+                Reviewers: []string{args[3]},
+            }
+            _, _, err = githubClient.PullRequests.RequestReviewers(context.Background(), "praktykanci-IBM", "user-access-records", pr.GetNumber(), reviewers)
+            if err != nil {
+                fmt.Println("Error adding reviewers:", err)
+                return
+            }
 			fmt.Println("Request added successfully.")
 			fmt.Println("ID of your request:", id)
 
@@ -194,11 +226,20 @@ var requestCmd = &cobra.Command{
 			fmt.Println("Error:", err)
 		}
 
-		_, _, err = githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newPR)
-		if err != nil {
-			fmt.Println("Error creating pull request:", err)
-			return
-		}
+		pr, _, err := githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newPR)
+			if err != nil {
+				fmt.Println("Error creating pull request:", err)
+				return
+			}
+
+            reviewers := github.ReviewersRequest{
+                Reviewers: []string{args[3]},
+            }
+            _, _, err = githubClient.PullRequests.RequestReviewers(context.Background(), "praktykanci-IBM", "user-access-records", pr.GetNumber(), reviewers)
+            if err != nil {
+                fmt.Println("Error adding reviewers:", err)
+                return
+            }
 
 		fmt.Println("Request added successfully.")
 		fmt.Println("ID of your request:", id)
