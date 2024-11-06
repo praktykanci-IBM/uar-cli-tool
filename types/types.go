@@ -8,6 +8,7 @@ type RequestData struct {
 	ID            string `yaml:"id"`
 	Added         bool   `yaml:"added"`
 	Justification string `yaml:"justification"`
+	WhenRequested int64  `yaml:"whenRequested"`
 }
 type Request struct {
 	Name          string `json:"name"`
