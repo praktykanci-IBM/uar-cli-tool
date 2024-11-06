@@ -54,7 +54,7 @@ var requestCmd = &cobra.Command{
 		}
 
 		// Check if branch exists
-		branchName := fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]) // replace with desired branch name
+		branchName := fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]) 
 		
 
 		commitMessage := "Created a file with request data"
@@ -66,8 +66,8 @@ var requestCmd = &cobra.Command{
 
 		newPR := &github.NewPullRequest{
 			Title: github.String(fmt.Sprintf("Request access - %s", id)),
-			Head:  github.String(fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0])), // The branch with the new file
-			Base:  github.String("main"),                                                                                           // The main branch
+			Head:  github.String(fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0])), 
+			Base:  github.String("main"),                                                                                           
 			Body:  github.String(fmt.Sprintf("User %s requests access to repository %s", args[0],args[1])),
 		}
 
@@ -78,15 +78,12 @@ var requestCmd = &cobra.Command{
             
             _, _, err = githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, branchName, 0)
             if err != nil { 
-                // Branch does not exist, so create it
-                // Retrieve the reference for the main branch
                 baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "refs/heads/main")
                 if err != nil {
                     fmt.Println("Error fetching base reference:", err)
                     return
                 }
 
-                // Create new branch reference
                 newRef := &github.Reference{
                     Ref:    github.String("refs/heads/" + branchName),
                     Object: &github.GitObject{SHA: baseRef.Object.SHA},
@@ -121,15 +118,13 @@ var requestCmd = &cobra.Command{
 
 		if err != nil {
             _, _, err = githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, branchName, 0)
-            if err != nil { // Branch does not exist, so create it
-                // Retrieve the reference for the main branch
+            if err != nil { 
                 baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "refs/heads/main")
                 if err != nil {
                     fmt.Println("Error fetching base reference:", err)
                     return
                 }
 
-                // Create new branch reference
                 newRef := &github.Reference{
                     Ref:    github.String("refs/heads/" + branchName),
                     Object: &github.GitObject{SHA: baseRef.Object.SHA},
@@ -172,15 +167,13 @@ var requestCmd = &cobra.Command{
 
 
         _, _, err = githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, branchName, 0)
-		if err != nil { // Branch does not exist, so create it
-			// Retrieve the reference for the main branch
+		if err != nil { 
 			baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "refs/heads/main")
 			if err != nil {
 				fmt.Println("Error fetching base reference:", err)
 				return
 			}
 
-			// Create new branch reference
 			newRef := &github.Reference{
 				Ref:    github.String("refs/heads/" + branchName),
 				Object: &github.GitObject{SHA: baseRef.Object.SHA},
