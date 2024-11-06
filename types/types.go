@@ -1,15 +1,30 @@
 package types
 
-type GitResponseData struct {
-	Content string `json:"content"`
-	Sha     string `json:"sha"`
-}
 type RequestData struct {
 	ID            string `yaml:"id"`
 	Added         bool   `yaml:"added"`
 	Justification string `yaml:"justification"`
 	WhenRequested int64  `yaml:"whenRequested"`
 }
+
+type CbnType int
+
+const (
+	Positive CbnType = iota
+	Negative
+)
+
+type CbnData struct {
+	Owner string  `yaml:"owner"`
+	Repo  string  `yaml:"repo"`
+	Type  CbnType `yaml:"type"`
+}
+
+type GitResponseData struct {
+	Content string `json:"content"`
+	Sha     string `json:"sha"`
+}
+
 type Request struct {
 	Name          string `json:"name"`
 	When          int64  `json:"when"`
