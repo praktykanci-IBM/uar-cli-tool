@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"praktykanci/uar/configData"
 	"praktykanci/uar/types"
@@ -28,6 +29,26 @@ var startCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
+
+		repoOrg, repoName := strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1]
+		collaborators, _, err := githubClient.Repositories.ListCollaborators(context.Background(), repoOrg, repoName, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "No such repository\n")
+			os.Exit(1)
+		}
+
+		isMaintainer := false
+		for _, collaborator := range collaborators {
+			if *collaborator.Login == args[0] && collaborator.Permissions["maintain"] {
+				isMaintainer = true
+				break
+			}
+		}
+
+		if !isMaintainer {
+			fmt.Fprintf(os.Stderr, "User %s is not a maintainer of %s\n", args[0], args[1])
+			os.Exit(1)
+		}
 
 		var cbnType types.CbnType
 		if negativeRevalidation {
