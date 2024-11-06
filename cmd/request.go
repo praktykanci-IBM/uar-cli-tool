@@ -54,31 +54,8 @@ var requestCmd = &cobra.Command{
 		}
 
 		// Check if branch exists
-		branchName := fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]) // replace with desired branch name
-		_, _, err = githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, branchName, 0)
-		if err != nil { // Branch does not exist, so create it
-			// Retrieve the reference for the main branch
-			baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "refs/heads/main")
-			if err != nil {
-				fmt.Println("Error fetching base reference:", err)
-				return
-			}
-
-			// Create new branch reference
-			newRef := &github.Reference{
-				Ref:    github.String("refs/heads/" + branchName),
-				Object: &github.GitObject{SHA: baseRef.Object.SHA},
-			}
-			_, _, err = githubClient.Git.CreateRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newRef)
-			if err != nil {
-				fmt.Println("Error creating branch:", err)
-				return
-			}
-			fmt.Println("Branch created successfully!")
-		} else {
-			fmt.Println("Request for this user and repository already exists!")
-			return
-		}
+		branchName := fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]) 
+		
 
 		commitMessage := "Created a file with request data"
 		options := &github.RepositoryContentFileOptions{
@@ -89,14 +66,38 @@ var requestCmd = &cobra.Command{
 
 		newPR := &github.NewPullRequest{
 			Title: github.String(fmt.Sprintf("Request access - %s", id)),
-			Head:  github.String(fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0])), // The branch with the new file
-			Base:  github.String("main"),                                                                                           // The main branch
-			Body:  github.String("This pull request adds a new access request"),
+			Head:  github.String(fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0])), 
+			Base:  github.String("main"),                                                                                           
+			Body:  github.String(fmt.Sprintf("User %s requests access to repository %s", args[0],args[1])),
 		}
 
 		_, _, _, err = githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, strings.Split(args[1], "/")[0], nil)
 
 		if err != nil {
+
+            
+            _, _, err = githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, branchName, 0)
+            if err != nil { 
+                baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "refs/heads/main")
+                if err != nil {
+                    fmt.Println("Error fetching base reference:", err)
+                    return
+                }
+
+                newRef := &github.Reference{
+                    Ref:    github.String("refs/heads/" + branchName),
+                    Object: &github.GitObject{SHA: baseRef.Object.SHA},
+                }
+                _, _, err = githubClient.Git.CreateRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newRef)
+                if err != nil {
+                    fmt.Println("Error creating branch:", err)
+                    return
+                }
+                fmt.Println("Branch created successfully!")
+            } else {
+                fmt.Println("Request for this user and repository already exists!")
+                return
+            }
 
 			_, _, err := githubClient.Repositories.CreateFile(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s/%s.yaml", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]), options)
 			if err != nil {
@@ -116,6 +117,28 @@ var requestCmd = &cobra.Command{
 		_, userDirContent, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1]), nil)
 
 		if err != nil {
+            _, _, err = githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, branchName, 0)
+            if err != nil { 
+                baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "refs/heads/main")
+                if err != nil {
+                    fmt.Println("Error fetching base reference:", err)
+                    return
+                }
+
+                newRef := &github.Reference{
+                    Ref:    github.String("refs/heads/" + branchName),
+                    Object: &github.GitObject{SHA: baseRef.Object.SHA},
+                }
+                _, _, err = githubClient.Git.CreateRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newRef)
+                if err != nil {
+                    fmt.Println("Error creating branch:", err)
+                    return
+                }
+                fmt.Println("Branch created successfully!")
+            } else {
+                fmt.Println("Request for this user and repository already exists!")
+                return
+            }
 
 			_, _, err := githubClient.Repositories.CreateFile(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s/%s.yaml", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]), options)
 			if err != nil {
@@ -140,6 +163,30 @@ var requestCmd = &cobra.Command{
 					return
 				}
 			}
+		}
+
+
+        _, _, err = githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, branchName, 0)
+		if err != nil { 
+			baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "refs/heads/main")
+			if err != nil {
+				fmt.Println("Error fetching base reference:", err)
+				return
+			}
+
+			newRef := &github.Reference{
+				Ref:    github.String("refs/heads/" + branchName),
+				Object: &github.GitObject{SHA: baseRef.Object.SHA},
+			}
+			_, _, err = githubClient.Git.CreateRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newRef)
+			if err != nil {
+				fmt.Println("Error creating branch:", err)
+				return
+			}
+			fmt.Println("Branch created successfully!")
+		} else {
+			fmt.Println("Request for this user and repository already exists!")
+			return
 		}
 
 		_, _, err = githubClient.Repositories.CreateFile(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s/%s.yaml", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]), options)
