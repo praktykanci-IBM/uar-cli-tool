@@ -130,14 +130,8 @@ func grantAccess(commitSHA string, branchName string, githubClient *github.Clien
 	}
 
 	_, _, err = githubClient.PullRequests.Merge(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, *pullRequests[0].Number, "access granted", &github.PullRequestOptions{
-		MergeMethod: "merge",
+		MergeMethod: "squash",
 	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	_, err = githubClient.Git.DeleteRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("heads/%s", branchName))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
