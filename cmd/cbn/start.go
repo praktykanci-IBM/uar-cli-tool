@@ -45,7 +45,7 @@ var startCmd = &cobra.Command{
 
 		newCmdMarshaled, err := yaml.Marshal(newCbn)
 		if err != nil {
-			fmt.Sprintf("Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
