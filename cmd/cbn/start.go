@@ -41,6 +41,7 @@ var startCmd = &cobra.Command{
 			Owner: args[0],
 			Repo:  args[1],
 			Type:  cbnType,
+			Users: []string{},
 		}
 
 		newCmdMarshaled, err := yaml.Marshal(newCbn)

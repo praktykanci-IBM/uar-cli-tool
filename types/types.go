@@ -15,9 +15,10 @@ const (
 )
 
 type CbnData struct {
-	Owner string  `yaml:"owner"`
-	Repo  string  `yaml:"repo"`
-	Type  CbnType `yaml:"type"`
+	Owner string   `yaml:"owner"`
+	Repo  string   `yaml:"repo"`
+	Type  CbnType  `yaml:"type"`
+	Users []string `yaml:"users"`
 }
 
 type GitResponseData struct {
