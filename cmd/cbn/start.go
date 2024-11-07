@@ -30,6 +30,38 @@ var startCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
 
+		_, currentCbns, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, "", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		for _, cbn := range currentCbns {
+			cbnFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, *cbn.Name, nil)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+
+			cbnContentMarshaled, err := cbnFile.GetContent()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+
+			var cbnContent types.CbnData
+			err = yaml.Unmarshal([]byte(cbnContentMarshaled), &cbnContent)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+
+			if cbnContent.Repo == args[1] {
+				fmt.Fprintf(os.Stderr, "CBN for this repository already exists\n")
+				os.Exit(1)
+			}
+		}
+
 		repoOrg, repoName := strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1]
 		collaborators, _, err := githubClient.Repositories.ListCollaborators(context.Background(), repoOrg, repoName, nil)
 		if err != nil {
