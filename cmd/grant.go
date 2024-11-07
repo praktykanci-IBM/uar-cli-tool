@@ -82,7 +82,7 @@ Outer:
 		os.Exit(1)
 	}
 
-	grantAccess(*requestBranch.Commit.SHA, *requestBranch.Name, githubClient)
+	grantAccess(*requestBranch.Commit.SHA, githubClient)
 
 	fmt.Printf("Access granted to UAR ID %s\n", uarID)
 }
@@ -108,12 +108,12 @@ func grantByUserAndRepo(user string, repo string, githubClient *github.Client) {
 		os.Exit(1)
 	}
 
-	grantAccess(*requestBranch.Commit.SHA, *requestBranch.Name, githubClient)
+	grantAccess(*requestBranch.Commit.SHA, githubClient)
 
 	fmt.Printf("Access granted to %s on %s\n", user, repo)
 }
 
-func grantAccess(commitSHA string, branchName string, githubClient *github.Client) {
+func grantAccess(commitSHA string, githubClient *github.Client) {
 	pullRequests, _, err := githubClient.PullRequests.ListPullRequestsWithCommit(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, commitSHA, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
