@@ -60,7 +60,9 @@ var extractCmd = &cobra.Command{
 		}
 
 		for _, user := range usersWithAccess {
-			cbnContent.Users = append(cbnContent.Users, strings.Split(*user.Name, ".")[0])
+			cbnContent.Users = append(cbnContent.Users, types.User{
+				Name: strings.Split(*user.Name, ".")[0],
+			})
 		}
 
 		resCbnMarshaled, err := yaml.Marshal(cbnContent)
@@ -70,7 +72,7 @@ var extractCmd = &cobra.Command{
 		}
 
 		_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, *cbnOriginalFile.Name, &github.RepositoryContentFileOptions{
-			Message: github.String("Extract data for the CBN"),
+			Message: github.String(fmt.Sprintf("Extract data for the CBN %s", cbnID)),
 			Content: resCbnMarshaled,
 			SHA:     cbnOriginalFile.SHA,
 		})
