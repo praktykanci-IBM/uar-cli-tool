@@ -15,14 +15,23 @@ const (
 )
 
 type CbnData struct {
-	Owner string  `yaml:"owner"`
-	Repo  string  `yaml:"repo"`
-	Type  CbnType `yaml:"type"`
-	Users []User  `yaml:"users"`
+	Owner string    `yaml:"owner"`
+	Repo  string    `yaml:"repo"`
+	Type  CbnType   `yaml:"type"`
+	Users []CbnUser `yaml:"users"`
 }
 
-type User struct {
-	Name string `yaml:"name"`
+type CbnUserApproval int
+
+const (
+	Unset CbnUserApproval = iota
+	Aproved
+	Rejected
+)
+
+type CbnUser struct {
+	Name   string          `yaml:"name"`
+	Status CbnUserApproval `yaml:"status"`
 }
 
 type GitResponseData struct {
