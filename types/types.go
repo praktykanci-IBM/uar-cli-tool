@@ -21,6 +21,16 @@ type CbnData struct {
 	Users []CbnUser `yaml:"users"`
 }
 
+type CbnDataCompleted struct {
+	Owner        string    `yaml:"owner"`
+	Repo         string    `yaml:"repo"`
+	Type         CbnType   `yaml:"type"`
+	Users        []CbnUser `yaml:"users"`
+	ExecutedBy   string    `yaml:"executedby"`
+	ExecutedOn   int64     `yaml:"executedon"`
+	UsersChanged []CbnUser `yaml:"userschanged"`
+}
+
 type CbnUserApproval int
 
 const (
