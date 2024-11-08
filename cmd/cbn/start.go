@@ -17,12 +17,16 @@ import (
 
 var negativeRevalidation bool
 var startCmd = &cobra.Command{
-	Use:     "start owner_name repo",
+	Use:     "start owner_name repo {positive | negative}",
 	Short:   "Start the CBN",
 	Aliases: []string{"s"},
 	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 2 {
-			return fmt.Errorf("requires owner_name and repo")
+		if len(args) != 3 {
+			return fmt.Errorf("requires owner_name, repo and type of CBN")
+		}
+
+		if args[2] != "positive" && args[2] != "negative" {
+			return fmt.Errorf("type of CBN must be positive or negative")
 		}
 
 		return nil
@@ -82,18 +86,11 @@ var startCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		var cbnType types.CbnType
-		if negativeRevalidation {
-			cbnType = types.Negative
-		} else {
-			cbnType = types.Positive
-		}
-
 		newCbnID := uuid.New().String()
 		newCbn := types.CbnData{
 			Owner: args[0],
 			Repo:  args[1],
-			Type:  cbnType,
+			Type:  args[2],
 			Users: []types.CbnUser{},
 		}
 

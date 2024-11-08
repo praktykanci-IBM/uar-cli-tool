@@ -7,24 +7,17 @@ type RequestData struct {
 	WhenRequested int64  `yaml:"whenRequested"`
 }
 
-type CbnType int
-
-const (
-	Positive CbnType = iota
-	Negative
-)
-
 type CbnData struct {
 	Owner string    `yaml:"owner"`
 	Repo  string    `yaml:"repo"`
-	Type  CbnType   `yaml:"type"`
+	Type  string    `yaml:"type"`
 	Users []CbnUser `yaml:"users"`
 }
 
 type CbnDataCompleted struct {
 	Owner        string    `yaml:"owner"`
 	Repo         string    `yaml:"repo"`
-	Type         CbnType   `yaml:"type"`
+	Type         string    `yaml:"type"`
 	Users        []CbnUser `yaml:"users"`
 	ExecutedBy   string    `yaml:"executedby"`
 	ExecutedOn   int64     `yaml:"executedon"`

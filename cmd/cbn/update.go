@@ -62,7 +62,7 @@ var updateCmd = &cobra.Command{
 
 		for _, user := range cbnContent.Users {
 
-			if (cbnContent.Type == types.Positive && user.Status == types.Unset) || (user.Status == types.Rejected) {
+			if (cbnContent.Type == "positive" && user.Status == types.Unset) || (user.Status == types.Rejected) {
 				_, err = githubClient.Repositories.RemoveCollaborator(context.Background(), strings.Split(cbnContent.Repo, "/")[0], strings.Split(cbnContent.Repo, "/")[1], user.Name)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
