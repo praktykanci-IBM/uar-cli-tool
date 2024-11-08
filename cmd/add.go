@@ -44,16 +44,14 @@ var AddCommand = &cobra.Command{
 	},
 }
 
-func init() {
-	rootCmd.AddCommand(AddCommand)
-}
-
 func addByUarID(uarID string, githubClient *github.Client) {
 	_, ownersDirs, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "", nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+
+	foundUser := false
 
 Outer:
 	for _, ownerDir := range ownersDirs {
@@ -93,6 +91,7 @@ Outer:
 				if requestFileContent.ID == uarID {
 					username := strings.Split(*requestFile.Name, ".")[0]
 					repo := fmt.Sprintf("%s/%s", *ownerDir.Name, *repoDir.Name)
+					foundUser = true
 
 					addByUserAndRepo(username, repo, githubClient)
 
@@ -101,7 +100,10 @@ Outer:
 			}
 		}
 
-		fmt.Printf("\n")
+		if !foundUser {
+			fmt.Fprintf(os.Stderr, "Request with ID %s not found\n", uarID)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -156,4 +158,8 @@ func addByUserAndRepo(user string, repo string, githubClient *github.Client) {
 	}
 
 	fmt.Printf("User %s added as a collaborator of %s\n", user, repo)
+}
+
+func init() {
+	rootCmd.AddCommand(AddCommand)
 }
