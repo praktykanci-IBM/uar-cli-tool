@@ -16,18 +16,12 @@ import (
 )
 
 var ownerName, repo, cbnType string
-
 var startCmd = &cobra.Command{
 	Use:     "start",
 	Short:   "Start the CBN",
 	Aliases: []string{"s"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		if ownerName == "" || repo == "" || cbnType == "" {
-			fmt.Println("Error: owner_name, repo, and type are required flags.")
-			os.Exit(1)
-		}
-
 		if cbnType != "positive" && cbnType != "negative" {
 			fmt.Println("Error: type of CBN must be 'positive' or 'negative'.")
 			os.Exit(1)
@@ -54,15 +48,15 @@ var startCmd = &cobra.Command{
 				os.Exit(1)
 			}
 
-			var cbnContent types.CbnData
+			var cbnContent types.CbnDataCompleted
 			err = yaml.Unmarshal([]byte(cbnContentMarshaled), &cbnContent)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
-
-			if cbnContent.Repo == repo {
-				fmt.Fprintf(os.Stderr, "CBN for this repository already exists\n")
+			
+			if cbnContent.Repo == repo && cbnContent.ExecutedBy == "" {
+				fmt.Fprintf(os.Stderr, "active CBN for this repository already exists\n")
 				os.Exit(1)
 			}
 		}
@@ -115,8 +109,13 @@ var startCmd = &cobra.Command{
 }
 
 func init() {
-	startCmd.Flags().StringVarP(&ownerName, "owner", "o", "", "The owner of the repository")
+	startCmd.Flags().StringVarP(&ownerName, "owner-name", "o", "", "The owner of the repository")
 	startCmd.Flags().StringVarP(&repo, "repo", "r", "", "The repository in the format owner/repo")
 	startCmd.Flags().StringVarP(&cbnType, "type", "t", "", "The type of CBN (positive or negative)")
+
+	startCmd.MarkFlagRequired("owner-name")
+	startCmd.MarkFlagRequired("repo")
+	startCmd.MarkFlagRequired("type")
+
 	CbnCommand.AddCommand(startCmd)
 }
