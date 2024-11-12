@@ -18,45 +18,52 @@ import (
 )
 
 var requestCmd = &cobra.Command{
-	Use:     "request user_name repo justification manager_name",
+	Use:     "request",
 	Aliases: []string{"r"},
 	Short:   "Request access to repository",
 	Long:    "Request access to selected repository with user ID, repository name, business justification and manager name",
-	Args:    cobra.ExactArgs(4),
 	Run: func(cmd *cobra.Command, args []string) {
+
+		userName, _ := cmd.Flags().GetString("user")
+		repo, _ := cmd.Flags().GetString("repo")
+		justification, _ := cmd.Flags().GetString("justification")
+		managerName, _ := cmd.Flags().GetString("manager")
+
+		if userName == "" || repo == "" || justification == "" || managerName == "" {
+			fmt.Println("Error: All flags are required.")
+			return
+		}
 
 		githubClient := github.NewClient(nil).WithAuthToken(GITHUB_PAT)
 
-        isCollaborator, _, err := githubClient.Repositories.IsCollaborator(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, args[3])
-        if err != nil {
-            fmt.Println("Error: ",err)
-        }
+		isCollaborator, _, err := githubClient.Repositories.IsCollaborator(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, managerName)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		if !isCollaborator {
+			fmt.Printf("Invalid manager name\n")
+			return
+		}
 
-        if !isCollaborator {
-            fmt.Printf("Invalid manager name")
-        }
-
-		_, _, err = githubClient.Users.Get(context.Background(), args[0])
-
+		_, _, err = githubClient.Users.Get(context.Background(), userName)
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
 		}
 
-		_, _, err = githubClient.Repositories.Get(context.Background(), strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1])
-
+		_, _, err = githubClient.Repositories.Get(context.Background(), strings.Split(repo, "/")[0], strings.Split(repo, "/")[1])
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
 		}
 
 		id := uuid.New().String()
-
 		newRequest := RequestData{
-			ID:    id,
-			Added: false,
-            Justification: args[2],
-            WhenRequested: time.Now().Unix(),
+			ID:            id,
+			Added:         false,
+			Justification: justification,
+			WhenRequested: time.Now().Unix(),
 		}
 
 		content, err := yaml.Marshal(&newRequest)
@@ -65,104 +72,106 @@ var requestCmd = &cobra.Command{
 			return
 		}
 
-		branchName := fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0]) 
-		
-
+		branchName := fmt.Sprintf("%s/%s/%s", strings.Split(repo, "/")[0], strings.Split(repo, "/")[1], userName)
 		commitMessage := "Created a file with request data"
+
 		options := &github.RepositoryContentFileOptions{
 			Message: github.String(commitMessage),
 			Content: content,
-			Branch:  github.String(fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0])),
+			Branch:  github.String(branchName),
 		}
 
-		newPR := &github.NewPullRequest{
-			Title: github.String(fmt.Sprintf("Request access - %s", id)),
-			Head:  github.String(fmt.Sprintf("%s/%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1], args[0])), 
-			Base:  github.String("main"),                                                                                           
-			Body:  github.String(fmt.Sprintf("User %s requests access to repository %s. Business justification: %s", args[0],args[1], args[2])),
-		}
-
-		_, _, _, err = githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, strings.Split(args[1], "/")[0], nil)
-
+		_, _, _, err = githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, strings.Split(repo, "/")[0], nil)
 		if err != nil {
-            createRequestFile(githubClient,branchName,newPR,args[1],args[0],options,args[3],id)
-            
+			createRequestFile(githubClient, branchName, newRequest, repo, userName, options, managerName, id)
 			return
 		}
 
-		_, userDirContent, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s", strings.Split(args[1], "/")[0], strings.Split(args[1], "/")[1]), nil)
-
+		_, userDirContent, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s", strings.Split(repo, "/")[0], strings.Split(repo, "/")[1]), nil)
 		if err != nil {
-            createRequestFile(githubClient,branchName,newPR,args[1],args[0],options,args[3],id)
-
+			createRequestFile(githubClient, branchName, newRequest, repo, userName, options, managerName, id)
 			return
 		}
 
 		for _, content := range userDirContent {
 			if content.Type != nil {
-				if *content.Name == fmt.Sprintf("%v.yaml", args[0]) {
+				if *content.Name == fmt.Sprintf("%v.yaml", userName) {
 					fmt.Println("Request for this user and repository already exists!")
 					return
 				}
 			}
 		}
 
-
-        createRequestFile(githubClient,branchName,newPR,args[1],args[0],options,args[3],id)
-
+		createRequestFile(githubClient, branchName, newRequest, repo, userName, options, managerName, id)
 		os.Exit(0)
-
 	},
 }
 
-func createRequestFile(githubClient *github.Client, branchName string, newPR *github.NewPullRequest,repo string, user_name string, options *github.RepositoryContentFileOptions, reviewer string, id string) {
-    _, _, err := githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, branchName, 0)
-		if err != nil { 
-			baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "refs/heads/main")
-			if err != nil {
-				fmt.Println("Error fetching base reference:", err)
-				return
-			}
-
-			newRef := &github.Reference{
-				Ref:    github.String("refs/heads/" + branchName),
-				Object: &github.GitObject{SHA: baseRef.Object.SHA},
-			}
-			_, _, err = githubClient.Git.CreateRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newRef)
-			if err != nil {
-				fmt.Println("Error creating branch:", err)
-				return
-			}
-			fmt.Println("Branch created successfully!")
-		} else {
-			fmt.Println("Request for this user and repository already exists!")
+func createRequestFile(githubClient *github.Client, branchName string, newRequest RequestData, repo string, userName string, options *github.RepositoryContentFileOptions, reviewer string, id string) {
+	_, _, err := githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, branchName, 0)
+	if err != nil {
+		baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "refs/heads/main")
+		if err != nil {
+			fmt.Println("Error fetching base reference:", err)
 			return
 		}
 
-		_, _, err = githubClient.Repositories.CreateFile(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s/%s.yaml", strings.Split(repo, "/")[0], strings.Split(repo, "/")[1], user_name), options)
-		if err != nil {
-			fmt.Println("Error:", err)
+		newRef := &github.Reference{
+			Ref:    github.String("refs/heads/" + branchName),
+			Object: &github.GitObject{SHA: baseRef.Object.SHA},
 		}
+		_, _, err = githubClient.Git.CreateRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newRef)
+		if err != nil {
+			fmt.Println("Error creating branch:", err)
+			return
+		}
+		fmt.Println("Branch created successfully!")
+	} else {
+		fmt.Println("Request for this user and repository already exists!")
+		return
+	}
 
-		pr, _, err := githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newPR)
-			if err != nil {
-				fmt.Println("Error creating pull request:", err)
-				return
-			}
+	_, _, err = githubClient.Repositories.CreateFile(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s/%s.yaml", strings.Split(repo, "/")[0], strings.Split(repo, "/")[1], userName), options)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
 
-            reviewers := github.ReviewersRequest{
-                Reviewers: []string{reviewer},
-            }
-            _, _, err = githubClient.PullRequests.RequestReviewers(context.Background(), "praktykanci-IBM", "user-access-records", pr.GetNumber(), reviewers)
-            if err != nil {
-                fmt.Println("Error adding reviewers:", err)
-                return
-            }
+	newPR := &github.NewPullRequest{
+		Title: github.String(fmt.Sprintf("Request access - %s", id)),
+		Head:  github.String(branchName),
+		Base:  github.String("main"),
+		Body:  github.String(fmt.Sprintf("User %s requests access to repository %s. Business justification: %s", userName, repo, newRequest.Justification)),
+	}
 
-		fmt.Println("Request added successfully.")
-		fmt.Println("ID of your request:", id)
+	pr, _, err := githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newPR)
+	if err != nil {
+		fmt.Println("Error creating pull request:", err)
+		return
+	}
+
+	reviewers := github.ReviewersRequest{
+		Reviewers: []string{reviewer},
+	}
+	_, _, err = githubClient.PullRequests.RequestReviewers(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, pr.GetNumber(), reviewers)
+	if err != nil {
+		fmt.Println("Error adding reviewers:", err)
+		return
+	}
+
+	fmt.Println("Request added successfully.")
+	fmt.Println("ID of your request:", id)
 }
 
 func init() {
 	rootCmd.AddCommand(requestCmd)
+
+	requestCmd.Flags().StringP("user", "u", "", "GitHub username requesting access")
+	requestCmd.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
+	requestCmd.Flags().StringP("justification", "j", "", "Business justification for access")
+	requestCmd.Flags().StringP("manager", "m", "", "Manager's GitHub username")
+
+	requestCmd.MarkFlagRequired("user")
+	requestCmd.MarkFlagRequired("repo")
+	requestCmd.MarkFlagRequired("justification")
+	requestCmd.MarkFlagRequired("manager")
 }

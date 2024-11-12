@@ -14,23 +14,36 @@ import (
 )
 
 var useRepoNameInsteadOfCbnIdExtract bool
+var adminName, cbnID, repoName string
+
 var extractCmd = &cobra.Command{
-	Use:     "extract admin_name {cbn_id | --repo repo_name}",
+	Use:     "extract",
 	Short:   "Extract data for the CBN",
 	Aliases: []string{"e"},
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 2 {
-			return fmt.Errorf("requires owner_name and repo")
+	Args:    cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		if adminName == "" {
+			fmt.Println("Error: admin_name is required.")
+			os.Exit(1)
 		}
 
-		return nil
-	},
-	Run: func(cmd *cobra.Command, args []string) {
+		if cbnID == "" && repoName == "" {
+			fmt.Println("Error: Either cbn_id or repo name is required.")
+			os.Exit(1)
+		}
+
 		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
 
-		cbnID := getCbnID(useRepoNameInsteadOfCbnIdExtract, args[1], githubClient)
+		if cbnID == "" && repoName != "" {
+			useRepoNameInsteadOfCbnIdExtract = true
+		} else {
+			useRepoNameInsteadOfCbnIdExtract = false
+			repoName = cbnID
+		}
 
-		cbnOriginalFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, fmt.Sprintf("%s.yaml", cbnID), nil)
+		cbnIDToUse := getCbnID(useRepoNameInsteadOfCbnIdExtract, repoName, githubClient)
+
+		cbnOriginalFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, fmt.Sprintf("%s.yaml", cbnIDToUse), nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -74,7 +87,7 @@ var extractCmd = &cobra.Command{
 		}
 
 		_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, *cbnOriginalFile.Name, &github.RepositoryContentFileOptions{
-			Message: github.String(fmt.Sprintf("Extract data for the CBN %s", cbnID)),
+			Message: github.String(fmt.Sprintf("Extract data for the CBN %s", cbnIDToUse)),
 			Content: resCbnMarshaled,
 			SHA:     cbnOriginalFile.SHA,
 		})
@@ -83,11 +96,13 @@ var extractCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Printf("Data extracted for CBN with ID: %s\n", cbnID)
+		fmt.Printf("Data extracted for CBN with ID: %s\n", cbnIDToUse)
 	},
 }
 
 func init() {
-	extractCmd.Flags().BoolVarP(&useRepoNameInsteadOfCbnIdExtract, "repo", "r", false, "Use the repo name instead of the CBN ID")
+	extractCmd.Flags().StringVarP(&adminName, "admin", "a", "", "The admin name who is extracting the CBN data")
+	extractCmd.Flags().StringVarP(&cbnID, "cbn-id", "c", "", "The CBN ID to extract data for")
+	extractCmd.Flags().StringVarP(&repoName, "repo", "r", "", "The repository name ")
 	CbnCommand.AddCommand(extractCmd)
 }

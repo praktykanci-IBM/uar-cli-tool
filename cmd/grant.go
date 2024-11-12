@@ -15,27 +15,24 @@ var grantCmd = &cobra.Command{
 	Use:     "grant manager_name {uar_id | user_name repo}",
 	Short:   "Grant a request",
 	Aliases: []string{"g"},
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			return fmt.Errorf("your github ID is required")
-		}
-		if len(args) == 1 {
-			return fmt.Errorf("either UAR ID or user and repo name are required")
-		}
-		if len(args) > 3 {
-			return fmt.Errorf("too many arguments")
-		}
-		return nil
-	},
+
 	Run: func(cmd *cobra.Command, args []string) {
-		// validate manager
+
+		uarID, _ := cmd.Flags().GetString("uar-id")
+		user, _ := cmd.Flags().GetString("user")
+		repo, _ := cmd.Flags().GetString("repo")
+
+		if uarID == "" && (user == "" || repo == "") {
+			fmt.Println("Error: You must provide either a UAR ID or both a user and repo.")
+			return
+		}
 
 		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
 
-		if len(args) == 2 {
-			grantByUarID(args[1], githubClient)
-		} else {
-			grantByUserAndRepo(args[1], args[2], githubClient)
+		if uarID != "" {
+			grantByUarID(uarID, githubClient)
+		} else if user != "" && repo != "" {
+			grantByUserAndRepo(user, repo, githubClient)
 		}
 
 		os.Exit(0)
@@ -44,6 +41,13 @@ var grantCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(grantCmd)
+
+	grantCmd.Flags().StringP("manager", "m", "", "Manager's GitHub username")
+	grantCmd.Flags().StringP("id", "i", "", "UAR ID to grant access")
+	grantCmd.Flags().StringP("user", "u", "", "GitHub username requesting access")
+	grantCmd.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
+
+	grantCmd.MarkFlagRequired("manager")
 }
 
 func grantByUarID(uarID string, githubClient *github.Client) {
