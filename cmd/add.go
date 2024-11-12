@@ -18,27 +18,22 @@ var AddCommand = &cobra.Command{
 	Use:     "add admin_name {uar_id | user_name repo}",
 	Short:   "Add a user as a collaborator",
 	Aliases: []string{"a"},
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			return fmt.Errorf("your github ID is required")
-		}
-		if len(args) == 1 {
-			return fmt.Errorf("either UAR ID or user and repo name are required")
-		}
-		if len(args) > 3 {
-			return fmt.Errorf("too many arguments")
-		}
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
-		// validate admin
+		uarID, _ := cmd.Flags().GetString("uar-id")
+		user, _ := cmd.Flags().GetString("user")
+		repo, _ := cmd.Flags().GetString("repo")
+
+		if uarID == "" && (user == "" || repo == "") {
+			fmt.Println("Error: You must provide either a UAR ID or both a user and repo.")
+			return
+		}
 
 		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
 
-		if len(args) == 2 {
-			addByUarID(args[1], githubClient)
-		} else {
-			addByUserAndRepo(args[1], args[2], githubClient)
+		if uarID != "" {
+			addByUarID(uarID, githubClient)
+		} else if user != "" && repo != "" {
+			addByUserAndRepo(user, repo, githubClient)
 		}
 
 	},
@@ -162,4 +157,11 @@ func addByUserAndRepo(user string, repo string, githubClient *github.Client) {
 
 func init() {
 	rootCmd.AddCommand(AddCommand)
+
+	AddCommand.Flags().StringP("admin", "a", "", "Admin's GitHub username")
+	AddCommand.Flags().StringP("id", "i", "", "UAR ID to add as a collaborator")
+	AddCommand.Flags().StringP("user", "u", "", "GitHub username requesting access")
+	AddCommand.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
+
+	AddCommand.MarkFlagRequired("admin")
 }

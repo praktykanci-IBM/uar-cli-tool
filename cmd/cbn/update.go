@@ -14,24 +14,33 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// var useRepoNameInsteadOfCbnIdExtract bool
 var updateCmd = &cobra.Command{
 	Use:     "update admin_name {cbn_id | --repo repo_name}",
 	Short:   "Complete the CBN, removing all rejected users from the repo",
 	Aliases: []string{"u"},
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 2 {
-			return fmt.Errorf("requires owner_name and repo")
-		}
-
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
 
-		cbnID := getCbnID(useRepoNameInsteadOfCbnIdExtract, args[1], githubClient)
+		if adminName == "" {
+			fmt.Println("Error: admin_name is required.")
+			os.Exit(1)
+		}
 
-		cbnOriginalFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, fmt.Sprintf("%s.yaml", cbnID), nil)
+		if cbnID == "" && repoName == "" {
+			fmt.Println("Error: Either cbn_id or repo name is required.")
+			os.Exit(1)
+		}
+
+		if cbnID == "" && repoName != "" {
+			useRepoNameInsteadOfCbnIdExtract = true
+		} else {
+			useRepoNameInsteadOfCbnIdExtract = false
+			repoName = cbnID
+		}
+
+		cbnIDToUse := getCbnID(useRepoNameInsteadOfCbnIdExtract, repoName, githubClient)
+
+		cbnOriginalFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, fmt.Sprintf("%s.yaml", cbnIDToUse), nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -55,7 +64,7 @@ var updateCmd = &cobra.Command{
 			Repo:         cbnContent.Repo,
 			Type:         cbnContent.Type,
 			Users:        cbnContent.Users,
-			ExecutedBy:   args[0],
+			ExecutedBy:   adminName,
 			ExecutedOn:   time.Now().Unix(),
 			UsersChanged: []types.CbnUser{},
 		}
@@ -79,7 +88,7 @@ var updateCmd = &cobra.Command{
 		}
 
 		_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, *cbnOriginalFile.Name, &github.RepositoryContentFileOptions{
-			Message: github.String(fmt.Sprintf("Update collaborators list, complete CBN %s", cbnID)),
+			Message: github.String(fmt.Sprintf("Update collaborators list, complete CBN %s", cbnIDToUse)),
 			Content: resCbnMarshaled,
 			SHA:     cbnOriginalFile.SHA,
 		})
@@ -88,12 +97,16 @@ var updateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Printf("CBN with ID: %s completed\n", cbnID)
+		fmt.Printf("CBN with ID: %s completed\n", cbnIDToUse)
 
 	},
 }
 
 func init() {
-	updateCmd.Flags().BoolVarP(&useRepoNameInsteadOfCbnIdExtract, "repo", "r", false, "Use the repo name instead of the CBN ID")
+	// updateCmd.Flags().BoolVarP(&useRepoNameInsteadOfCbnIdExtract, "repo", "r", false, "Use the repo name instead of the CBN ID")
 	CbnCommand.AddCommand(updateCmd)
+
+	updateCmd.Flags().StringVarP(&adminName, "admin", "a", "", "The admin name who is extracting the CBN data")
+	updateCmd.Flags().StringVarP(&cbnID, "cbn-id", "c", "", "The CBN ID to extract data for")
+	updateCmd.Flags().StringVarP(&repoName, "repo", "r", "", "The repository name ")
 }
