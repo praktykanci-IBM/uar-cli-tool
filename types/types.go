@@ -25,12 +25,12 @@ type CbnDataCompleted struct {
 	UsersChanged []CbnUser `yaml:"userschanged"`
 }
 
-type CbnUserApproval int
+type CbnUserApproval string
 
 const (
-	Unset CbnUserApproval = iota
-	Aproved
-	Rejected
+	Unset    CbnUserApproval = "unset"
+	Aproved  CbnUserApproval = "approved"
+	Rejected CbnUserApproval = "rejected"
 )
 
 type CbnUser struct {
