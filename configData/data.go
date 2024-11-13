@@ -1,7 +1,6 @@
 package configData
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -36,6 +35,7 @@ func Init() {
 	if envPAT != "" {
 		GITHUB_PAT = envPAT
 	}
+
 
 	ORG_NAME = "praktykanci-IBM"
 	UAR_DB_NAME = "user-access-records"

@@ -4,7 +4,8 @@ type RequestData struct {
 	ID            string `yaml:"id"`
 	Added         bool   `yaml:"added"`
 	Justification string `yaml:"justification"`
-	WhenRequested int64  `yaml:"whenRequested"`
+	RequestedOn   string `yaml:"requested_on"`
+	RequestedBy   string `yaml:"requested_by"`
 }
 
 type CbnData struct {
@@ -19,62 +20,20 @@ type CbnDataCompleted struct {
 	Repo         string    `yaml:"repo"`
 	Type         string    `yaml:"type"`
 	Users        []CbnUser `yaml:"users"`
-	ExecutedBy   string    `yaml:"executedby"`
-	ExecutedOn   int64     `yaml:"executedon"`
+	ExecutedBy   string    `yaml:"executed_by"`
+	ExecutedOn   string    `yaml:"executed_on"`
 	UsersChanged []CbnUser `yaml:"userschanged"`
 }
 
-type CbnUserApproval int
+type CbnUserApproval string
 
 const (
-	Unset CbnUserApproval = iota
-	Aproved
-	Rejected
+	Unset    CbnUserApproval = "unset"
+	Aproved  CbnUserApproval = "approved"
+	Rejected CbnUserApproval = "rejected"
 )
 
 type CbnUser struct {
 	Name   string          `yaml:"name"`
 	Status CbnUserApproval `yaml:"status"`
-}
-
-type GitResponseData struct {
-	Content string `json:"content"`
-	Sha     string `json:"sha"`
-}
-
-type Request struct {
-	Name          string `json:"name"`
-	When          int64  `json:"when"`
-	Justification string `json:"justification"`
-	Repo          string `json:"repo"`
-	ID            string `json:"id"`
-}
-type Requests struct {
-	Requests []Request `json:"requests"`
-}
-
-type GrantedRequest struct {
-	Name          string `json:"name"`
-	WhenRequested int64  `json:"whenRequested"`
-	WhenAccepted  int64  `json:"whenAccepted"`
-	Justification string `json:"justification"`
-	Repo          string `json:"repo"`
-	ID            string `json:"id"`
-	ApproverID    string `json:"approver"`
-	AdminID       string `json:"admin"`
-	WhenCompleted int64  `json:"whenCompleted"`
-}
-type GrantedRequests struct {
-	Requests []GrantedRequest `json:"grantedRequests"`
-}
-
-type Cbn struct {
-	CbnID      string `json:"cbn_ID"`
-	Owner      string `json:"owner"`
-	Repo       string `json:"repo"`
-	IsPositive bool   `json:"is_positive"`
-	StartDate  int64  `json:"start_date"`
-}
-type CbnArray struct {
-	Cbns []Cbn `json:"cbns"`
 }
