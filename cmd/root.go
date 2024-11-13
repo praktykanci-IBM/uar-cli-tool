@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"praktykanci/uar/cmd/auth"
 	"praktykanci/uar/cmd/cbn"
 	"praktykanci/uar/configData"
 
@@ -22,6 +23,7 @@ func Execute() {
 
 	// import the subcommands
 	rootCmd.AddCommand(cbn.CbnCommand)
+	rootCmd.AddCommand(auth.AuthCommand)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
