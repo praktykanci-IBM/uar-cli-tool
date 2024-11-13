@@ -36,6 +36,12 @@ var requestCmd = &cobra.Command{
 
 		githubClient := github.NewClient(nil).WithAuthToken(GITHUB_PAT)
 
+		user, _, err := githubClient.Users.Get(context.Background(), "")
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
 		isCollaborator, _, err := githubClient.Repositories.IsCollaborator(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, managerName)
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -58,12 +64,16 @@ var requestCmd = &cobra.Command{
 			return
 		}
 
+		currentTime := time.Now()
+		formattedTime := currentTime.Format("02.01.2006, 15:04 MST")
+
 		id := uuid.New().String()
 		newRequest := RequestData{
 			ID:            id,
 			Added:         false,
 			Justification: justification,
-			WhenRequested: time.Now().Unix(),
+			RequestedOn:   formattedTime,
+			RequestedBy:   *user.Login,
 		}
 
 		content, err := yaml.Marshal(&newRequest)

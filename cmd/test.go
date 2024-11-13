@@ -3,13 +3,11 @@ package cmd
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"os"
 
 	"praktykanci/uar/configData"
 	. "praktykanci/uar/configData"
-	. "praktykanci/uar/types"
 
 	"github.com/google/go-github/v66/github"
 	"github.com/spf13/cobra"
@@ -38,15 +36,6 @@ var testCommand = &cobra.Command{
 		}
 
 		fmt.Printf("Decoded content: %s\n\n", decodedContent)
-
-		var unmarshaledContent GrantedRequests
-		err = json.Unmarshal(decodedContent, &unmarshaledContent)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "Could not unmarshal response body\n")
-			os.Exit(1)
-		}
-
-		fmt.Printf("Unmarshaled content: %v\n\n", unmarshaledContent)
 
 	},
 }
