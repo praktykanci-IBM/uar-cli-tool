@@ -1,7 +1,6 @@
 package configData
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 
@@ -27,8 +26,6 @@ func Init() {
 
 	viper.ReadInConfig()
 	GITHUB_PAT = viper.GetString("GITHUB_PAT")
-
-	fmt.Println(GITHUB_PAT)
 
 	// GITHUB_PAT = viper.GetString("GITHUB_PAT")
 	// GITHUB_PAT = viper.GetString("GITHUB_PAT")
