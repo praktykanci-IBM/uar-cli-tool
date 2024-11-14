@@ -6,6 +6,7 @@ import (
 	"os"
 	"praktykanci/uar/configData"
 	"praktykanci/uar/types"
+	"time"
 
 	"github.com/google/go-github/v66/github"
 	"github.com/spf13/cobra"
@@ -88,6 +89,19 @@ func runValidateCmd(cmd *cobra.Command, args []string) {
 			} else {
 				cbnContent.Users[i].Status = types.Rejected
 			}
+
+			currentTime := time.Now()
+			formattedTime := currentTime.Format("02.01.2006, 15:04 MST")
+
+			validatedBy, _, err := githubClient.Users.Get(context.Background(), "")
+			if err != nil {
+				fmt.Println("Error:", err)
+				return
+			}
+
+			cbnContent.Users[i].ValidatedBy = *validatedBy.Login
+			cbnContent.Users[i].ValidatedOn = formattedTime
+
 			break
 		}
 	}

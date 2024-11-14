@@ -7,6 +7,7 @@ import (
 	"praktykanci/uar/configData"
 	"praktykanci/uar/types"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v66/github"
 	"github.com/spf13/cobra"
@@ -75,10 +76,24 @@ var extractCmd = &cobra.Command{
 		cbnContent.Users = []types.CbnUser{}
 		for _, user := range usersWithAccess {
 			cbnContent.Users = append(cbnContent.Users, types.CbnUser{
-				Name:   strings.Split(*user.Name, ".")[0],
-				Status: types.Unset,
+				Name:        strings.Split(*user.Name, ".")[0],
+				Status:      types.Unset,
+				ValidatedOn: "",
+				ValidatedBy: "",
 			})
 		}
+
+		currentTime := time.Now()
+		formattedTime := currentTime.Format("02.01.2006, 15:04 MST")
+
+		extractedBy, _, err := githubClient.Users.Get(context.Background(), "")
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		cbnContent.ExtractedBy = *extractedBy.Login
+		cbnContent.ExtractedOn = formattedTime
 
 		resCbnMarshaled, err := yaml.Marshal(cbnContent)
 		if err != nil {

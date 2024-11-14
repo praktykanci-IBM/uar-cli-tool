@@ -26,16 +26,22 @@ const (
 )
 
 type CbnData struct {
-	Owner string    `yaml:"owner"`
-	Repo  string    `yaml:"repo"`
-	Type  string    `yaml:"type"`
-	Users []CbnUser `yaml:"users"`
+	StartedBy   string    `yaml:"started_by"`
+	StartedOn   string    `yaml:"started_on"`
+	Repo        string    `yaml:"repo"`
+	Type        string    `yaml:"type"`
+	ExtractedBy string    `yaml:"extracted_by"`
+	ExtractedOn string    `yaml:"extracted_on"`
+	Users       []CbnUser `yaml:"users"`
 }
 
 type CbnDataCompleted struct {
-	Owner        string    `yaml:"owner"`
+	StartedBy    string    `yaml:"started_by"`
+	StartedOn    string    `yaml:"started_on"`
 	Repo         string    `yaml:"repo"`
 	Type         string    `yaml:"type"`
+	ExtractedBy  string    `yaml:"extracted_by"`
+	ExtractedOn  string    `yaml:"extracted_on"`
 	Users        []CbnUser `yaml:"users"`
 	ExecutedBy   string    `yaml:"executed_by"`
 	ExecutedOn   string    `yaml:"executed_on"`
@@ -51,6 +57,8 @@ const (
 )
 
 type CbnUser struct {
-	Name   string          `yaml:"name"`
-	Status CbnUserApproval `yaml:"status"`
+	Name        string          `yaml:"name"`
+	Status      CbnUserApproval `yaml:"status"`
+	ValidatedOn string          `yaml:"validated_on"`
+	ValidatedBy string          `yaml:"validated_by"`
 }

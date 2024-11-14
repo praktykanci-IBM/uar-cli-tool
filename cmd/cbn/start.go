@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"praktykanci/uar/configData"
 	"praktykanci/uar/types"
@@ -81,12 +82,15 @@ var startCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		currentTime := time.Now()
+		formattedTime := currentTime.Format("02.01.2006, 15:04 MST")
 		newCbnID := uuid.New().String()
 		newCbn := types.CbnData{
-			Owner: ownerName,
-			Repo:  repo,
-			Type:  cbnType,
-			Users: []types.CbnUser{},
+			StartedBy: ownerName,
+			StartedOn: formattedTime,
+			Repo:      repo,
+			Type:      cbnType,
+			Users:     []types.CbnUser{},
 		}
 
 		newCmdMarshaled, err := yaml.Marshal(newCbn)
