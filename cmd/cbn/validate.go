@@ -83,9 +83,9 @@ func runValidateCmd(cmd *cobra.Command, args []string) {
 		if user.Name == userName {
 			userFound = true
 			if action == "approve" {
-				cbnContent.Users[i].Status = types.Aproved
+				cbnContent.Users[i].State = types.Aproved
 			} else {
-				cbnContent.Users[i].Status = types.Rejected
+				cbnContent.Users[i].State = types.Rejected
 			}
 
 			currentTime := time.Now()

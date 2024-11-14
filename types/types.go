@@ -51,14 +51,14 @@ type CbnDataCompleted struct {
 type CbnUserApproval string
 
 const (
-	Unset    CbnUserApproval = "unset"
+	Pending  CbnUserApproval = "pending"
 	Aproved  CbnUserApproval = "approved"
 	Rejected CbnUserApproval = "rejected"
 )
 
 type CbnUser struct {
 	Name        string          `yaml:"name"`
-	Status      CbnUserApproval `yaml:"status"`
+	State       CbnUserApproval `yaml:"state"`
 	ValidatedOn string          `yaml:"validated_on"`
 	ValidatedBy string          `yaml:"validated_by"`
 }

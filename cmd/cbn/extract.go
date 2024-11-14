@@ -77,7 +77,7 @@ var extractCmd = &cobra.Command{
 		for _, user := range usersWithAccess {
 			cbnContent.Users = append(cbnContent.Users, types.CbnUser{
 				Name:        strings.Split(*user.Name, ".")[0],
-				Status:      types.Unset,
+				State:       types.Pending,
 				ValidatedOn: "",
 				ValidatedBy: "",
 			})
