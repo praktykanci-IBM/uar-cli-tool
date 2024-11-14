@@ -163,5 +163,7 @@ func init() {
 	AddCommand.Flags().StringP("user", "u", "", "GitHub username requesting access")
 	AddCommand.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
 
+	AddCommand.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
+
 	AddCommand.MarkFlagRequired("admin")
 }

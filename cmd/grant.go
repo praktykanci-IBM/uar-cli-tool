@@ -48,6 +48,8 @@ func init() {
 	grantCmd.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
 
 	grantCmd.MarkFlagRequired("manager")
+
+	grantCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
 }
 
 func grantByUarID(uarID string, githubClient *github.Client) {

@@ -112,4 +112,6 @@ func init() {
 	updateCmd.Flags().StringVarP(&adminName, "admin", "a", "", "The admin name who is extracting the CBN data")
 	updateCmd.Flags().StringVarP(&cbnID, "cbn-id", "c", "", "The CBN ID to extract data for")
 	updateCmd.Flags().StringVarP(&repoName, "repo", "r", "", "The repository name ")
+
+	updateCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
 }

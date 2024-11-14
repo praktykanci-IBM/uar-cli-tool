@@ -29,6 +29,8 @@ var requestCmd = &cobra.Command{
 		justification, _ := cmd.Flags().GetString("justification")
 		managerName, _ := cmd.Flags().GetString("manager")
 
+		fmt.Printf("token: %s\n", GITHUB_PAT)
+
 		if userName == "" || repo == "" || justification == "" || managerName == "" {
 			fmt.Println("Error: All flags are required.")
 			return
@@ -184,4 +186,6 @@ func init() {
 	requestCmd.MarkFlagRequired("repo")
 	requestCmd.MarkFlagRequired("justification")
 	requestCmd.MarkFlagRequired("manager")
+
+	requestCmd.Flags().StringVarP(&GITHUB_PAT, "token", "t", GITHUB_PAT, "GitHub personal access token")
 }

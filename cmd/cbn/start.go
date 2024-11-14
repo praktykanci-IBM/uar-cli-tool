@@ -54,7 +54,7 @@ var startCmd = &cobra.Command{
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
-			
+
 			if cbnContent.Repo == repo && cbnContent.ExecutedBy == "" {
 				fmt.Fprintf(os.Stderr, "active CBN for this repository already exists\n")
 				os.Exit(1)
@@ -111,11 +111,13 @@ var startCmd = &cobra.Command{
 func init() {
 	startCmd.Flags().StringVarP(&ownerName, "owner-name", "o", "", "The owner of the repository")
 	startCmd.Flags().StringVarP(&repo, "repo", "r", "", "The repository in the format owner/repo")
-	startCmd.Flags().StringVarP(&cbnType, "type", "t", "", "The type of CBN (positive or negative)")
+	startCmd.Flags().StringVarP(&cbnType, "type", "y", "", "The type of CBN (positive or negative)")
 
 	startCmd.MarkFlagRequired("owner-name")
 	startCmd.MarkFlagRequired("repo")
 	startCmd.MarkFlagRequired("type")
+
+	startCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
 
 	CbnCommand.AddCommand(startCmd)
 }
