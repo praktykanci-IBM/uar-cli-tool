@@ -40,7 +40,7 @@ var updateCmd = &cobra.Command{
 
 		cbnIDToUse := getCbnID(useRepoNameInsteadOfCbnIdExtract, repoName, githubClient)
 
-		cbnOriginalFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, fmt.Sprintf("%s.yaml", cbnIDToUse), nil)
+		cbnOriginalFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("CBN/%s.yaml", cbnIDToUse), nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -77,7 +77,7 @@ var updateCmd = &cobra.Command{
 
 		for _, user := range cbnContent.Users {
 
-			if (cbnContent.Type == "positive" && user.Status == types.Unset) || (user.Status == types.Rejected) {
+			if (cbnContent.Type == "positive" && user.State == types.Pending) || (user.State == types.Rejected) {
 				_, err = githubClient.Repositories.RemoveCollaborator(context.Background(), strings.Split(cbnContent.Repo, "/")[0], strings.Split(cbnContent.Repo, "/")[1], user.Name)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -93,7 +93,7 @@ var updateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, *cbnOriginalFile.Name, &github.RepositoryContentFileOptions{
+		_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("CBN/%s", *cbnOriginalFile.Name), &github.RepositoryContentFileOptions{
 			Message: github.String(fmt.Sprintf("Update collaborators list, complete CBN %s", cbnIDToUse)),
 			Content: resCbnMarshaled,
 			SHA:     cbnOriginalFile.SHA,

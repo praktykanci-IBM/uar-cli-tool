@@ -44,7 +44,7 @@ var extractCmd = &cobra.Command{
 
 		cbnIDToUse := getCbnID(useRepoNameInsteadOfCbnIdExtract, repoName, githubClient)
 
-		cbnOriginalFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, fmt.Sprintf("%s.yaml", cbnIDToUse), nil)
+		cbnOriginalFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("CBN/%s.yaml", cbnIDToUse), nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -63,7 +63,7 @@ var extractCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		_, usersWithAccess, res, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, cbnContent.Repo, nil)
+		_, usersWithAccess, res, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s", cbnContent.Repo), nil)
 		if err != nil {
 			if res.StatusCode == 404 {
 				fmt.Fprintf(os.Stderr, "No access records for such repository\n")
@@ -77,7 +77,7 @@ var extractCmd = &cobra.Command{
 		for _, user := range usersWithAccess {
 			cbnContent.Users = append(cbnContent.Users, types.CbnUser{
 				Name:        strings.Split(*user.Name, ".")[0],
-				Status:      types.Unset,
+				State:       types.Pending,
 				ValidatedOn: "",
 				ValidatedBy: "",
 			})
@@ -101,7 +101,7 @@ var extractCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, *cbnOriginalFile.Name, &github.RepositoryContentFileOptions{
+		_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("CBN/%s", *cbnOriginalFile.Name), &github.RepositoryContentFileOptions{
 			Message: github.String(fmt.Sprintf("Extract data for the CBN %s", cbnIDToUse)),
 			Content: resCbnMarshaled,
 			SHA:     cbnOriginalFile.SHA,

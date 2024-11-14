@@ -58,8 +58,8 @@ func runValidateCmd(cmd *cobra.Command, args []string) {
 	cbnOriginalFile, _, _, err := githubClient.Repositories.GetContents(
 		context.Background(),
 		configData.ORG_NAME,
-		configData.CBN_DB_NAME,
-		fmt.Sprintf("%s.yaml", finalCbnID),
+		configData.DB_NAME,
+		fmt.Sprintf("CBN/%s.yaml", finalCbnID),
 		nil,
 	)
 	if err != nil {
@@ -85,9 +85,9 @@ func runValidateCmd(cmd *cobra.Command, args []string) {
 		if user.Name == userName {
 			userFound = true
 			if action == "approve" {
-				cbnContent.Users[i].Status = types.Aproved
+				cbnContent.Users[i].State = types.Aproved
 			} else {
-				cbnContent.Users[i].Status = types.Rejected
+				cbnContent.Users[i].State = types.Rejected
 			}
 
 			currentTime := time.Now()
@@ -120,8 +120,8 @@ func runValidateCmd(cmd *cobra.Command, args []string) {
 	_, _, err = githubClient.Repositories.UpdateFile(
 		context.Background(),
 		configData.ORG_NAME,
-		configData.CBN_DB_NAME,
-		*cbnOriginalFile.Name,
+		configData.DB_NAME,
+		fmt.Sprintf("CBN/%s", *cbnOriginalFile.Name),
 		&github.RepositoryContentFileOptions{
 			Message: github.String(fmt.Sprintf("Validate user %s for the CBN %s", userName, finalCbnID)),
 			Content: resCbnMarshalled,

@@ -12,6 +12,7 @@ var GITHUB_PAT string
 var ORG_NAME string
 var UAR_DB_NAME string
 var CBN_DB_NAME string
+var DB_NAME string
 
 func Init() {
 	viper.SetConfigName("config")
@@ -40,4 +41,5 @@ func Init() {
 	ORG_NAME = "praktykanci-IBM"
 	UAR_DB_NAME = "user-access-records"
 	CBN_DB_NAME = "continuous-business-need"
+	DB_NAME = "storage"
 }
