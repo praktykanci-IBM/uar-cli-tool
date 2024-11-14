@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"praktykanci/uar/configData"
 	. "praktykanci/uar/types"
@@ -123,7 +124,7 @@ func addByUserAndRepo(user string, repo string, githubClient *github.Client) {
 		os.Exit(1)
 	}
 
-	if requestFileContent.Added {
+	if requestFileContent.State == Completed {
 		fmt.Printf("User %s is already a collaborator of %s\n", user, repo)
 		os.Exit(0)
 	}
@@ -135,8 +136,27 @@ func addByUserAndRepo(user string, repo string, githubClient *github.Client) {
 		os.Exit(1)
 	}
 
-	requestFileContent.Added = true
-	resFileMarshaled, err := yaml.Marshal(requestFileContent)
+	currentTime := time.Now()
+	formattedTime := currentTime.Format("02.01.2006, 15:04 MST")
+
+	completedBy, _, err := githubClient.Users.Get(context.Background(), "")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	requestCompleted := RequestDataCompleted{
+		ID:            requestFileContent.ID,
+		State:         Completed,
+		Justification: requestFileContent.Justification,
+		RequestedOn:   requestFileContent.RequestedOn,
+		RequestedBy:   requestFileContent.RequestedBy,
+		CompletedOn:   formattedTime,
+		CompletedBy:   *completedBy.Login,
+	}
+
+	// requestFileContent.State = Completed
+	resFileMarshaled, err := yaml.Marshal(requestCompleted)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
