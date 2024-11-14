@@ -70,7 +70,7 @@ var requestCmd = &cobra.Command{
 		id := uuid.New().String()
 		newRequest := RequestData{
 			ID:            id,
-			Added:         false,
+			State:         Granted,
 			Justification: justification,
 			RequestedOn:   formattedTime,
 			RequestedBy:   *user.Login,
