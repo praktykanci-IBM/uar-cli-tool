@@ -63,9 +63,12 @@ var updateCmd = &cobra.Command{
 		formattedTime := currentTime.Format("02.01.2006, 15:04 MST")
 
 		cbnContentUpdated := types.CbnDataCompleted{
-			Owner:        cbnContent.Owner,
+			StartedBy:    cbnContent.StartedBy,
+			StartedOn:    cbnContent.StartedOn,
 			Repo:         cbnContent.Repo,
 			Type:         cbnContent.Type,
+			ExtractedBy:  cbnContent.ExtractedBy,
+			ExtractedOn:  cbnContent.ExtractedOn,
 			Users:        cbnContent.Users,
 			ExecutedBy:   adminName,
 			ExecutedOn:   formattedTime,
