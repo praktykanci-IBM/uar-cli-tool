@@ -42,7 +42,7 @@ var requestCmd = &cobra.Command{
 			return
 		}
 
-		isCollaborator, _, err := githubClient.Repositories.IsCollaborator(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, managerName)
+		isCollaborator, _, err := githubClient.Repositories.IsCollaborator(context.Background(), configData.ORG_NAME, configData.DB_NAME, managerName)
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -82,7 +82,7 @@ var requestCmd = &cobra.Command{
 			return
 		}
 
-		branchName := fmt.Sprintf("%s/%s/%s", strings.Split(repo, "/")[0], strings.Split(repo, "/")[1], userName)
+		branchName := fmt.Sprintf("user-access-records/%s/%s/%s", strings.Split(repo, "/")[0], strings.Split(repo, "/")[1], userName)
 		commitMessage := "Created a file with request data"
 
 		options := &github.RepositoryContentFileOptions{
@@ -91,13 +91,13 @@ var requestCmd = &cobra.Command{
 			Branch:  github.String(branchName),
 		}
 
-		_, _, _, err = githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, strings.Split(repo, "/")[0], nil)
+		_, _, _, err = githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s", strings.Split(repo, "/")[0]), nil)
 		if err != nil {
 			createRequestFile(githubClient, branchName, newRequest, repo, userName, options, managerName, id)
 			return
 		}
 
-		_, userDirContent, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s", strings.Split(repo, "/")[0], strings.Split(repo, "/")[1]), nil)
+		_, userDirContent, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s", strings.Split(repo, "/")[0], strings.Split(repo, "/")[1]), nil)
 		if err != nil {
 			createRequestFile(githubClient, branchName, newRequest, repo, userName, options, managerName, id)
 			return
@@ -118,9 +118,9 @@ var requestCmd = &cobra.Command{
 }
 
 func createRequestFile(githubClient *github.Client, branchName string, newRequest RequestData, repo string, userName string, options *github.RepositoryContentFileOptions, reviewer string, id string) {
-	_, _, err := githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, branchName, 0)
+	_, _, err := githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.DB_NAME, branchName, 0)
 	if err != nil {
-		baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "refs/heads/main")
+		baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.DB_NAME, "refs/heads/main")
 		if err != nil {
 			fmt.Println("Error fetching base reference:", err)
 			return
@@ -130,7 +130,7 @@ func createRequestFile(githubClient *github.Client, branchName string, newReques
 			Ref:    github.String("refs/heads/" + branchName),
 			Object: &github.GitObject{SHA: baseRef.Object.SHA},
 		}
-		_, _, err = githubClient.Git.CreateRef(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newRef)
+		_, _, err = githubClient.Git.CreateRef(context.Background(), configData.ORG_NAME, configData.DB_NAME, newRef)
 		if err != nil {
 			fmt.Println("Error creating branch:", err)
 			return
@@ -141,7 +141,7 @@ func createRequestFile(githubClient *github.Client, branchName string, newReques
 		return
 	}
 
-	_, _, err = githubClient.Repositories.CreateFile(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s/%s.yaml", strings.Split(repo, "/")[0], strings.Split(repo, "/")[1], userName), options)
+	_, _, err = githubClient.Repositories.CreateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s.yaml", strings.Split(repo, "/")[0], strings.Split(repo, "/")[1], userName), options)
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
@@ -153,7 +153,7 @@ func createRequestFile(githubClient *github.Client, branchName string, newReques
 		Body:  github.String(fmt.Sprintf("User %s requests access to repository %s. Business justification: %s", userName, repo, newRequest.Justification)),
 	}
 
-	pr, _, err := githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, newPR)
+	pr, _, err := githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.DB_NAME, newPR)
 	if err != nil {
 		fmt.Println("Error creating pull request:", err)
 		return
@@ -162,7 +162,7 @@ func createRequestFile(githubClient *github.Client, branchName string, newReques
 	reviewers := github.ReviewersRequest{
 		Reviewers: []string{reviewer},
 	}
-	_, _, err = githubClient.PullRequests.RequestReviewers(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, pr.GetNumber(), reviewers)
+	_, _, err = githubClient.PullRequests.RequestReviewers(context.Background(), configData.ORG_NAME, configData.DB_NAME, pr.GetNumber(), reviewers)
 	if err != nil {
 		fmt.Println("Error adding reviewers:", err)
 		return

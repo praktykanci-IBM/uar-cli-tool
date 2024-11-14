@@ -41,7 +41,7 @@ var AddCommand = &cobra.Command{
 }
 
 func addByUarID(uarID string, githubClient *github.Client) {
-	_, ownersDirs, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, "", nil)
+	_, ownersDirs, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, "user-access-records", nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -51,21 +51,21 @@ func addByUarID(uarID string, githubClient *github.Client) {
 
 Outer:
 	for _, ownerDir := range ownersDirs {
-		_, reposDirs, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, *ownerDir.Name, nil)
+		_, reposDirs, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s", *ownerDir.Name), nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
 		for _, repoDir := range reposDirs {
-			_, requestFiles, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s", *ownerDir.Name, *repoDir.Name), nil)
+			_, requestFiles, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s", *ownerDir.Name, *repoDir.Name), nil)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
 
 			for _, requestFileWithouData := range requestFiles {
-				requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf(("%s/%s/%s"), *ownerDir.Name, *repoDir.Name, *requestFileWithouData.Name), nil)
+				requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf(("user-access-records/%s/%s/%s"), *ownerDir.Name, *repoDir.Name, *requestFileWithouData.Name), nil)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 					os.Exit(1)
@@ -104,7 +104,7 @@ Outer:
 }
 
 func addByUserAndRepo(user string, repo string, githubClient *github.Client) {
-	requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s.yaml", repo, user), nil)
+	requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s.yaml", repo, user), nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
 		os.Exit(1)
@@ -162,7 +162,7 @@ func addByUserAndRepo(user string, repo string, githubClient *github.Client) {
 		os.Exit(1)
 	}
 
-	_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, fmt.Sprintf("%s/%s.yaml", repo, user), &github.RepositoryContentFileOptions{
+	_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s.yaml", repo, user), &github.RepositoryContentFileOptions{
 		Message: github.String("Add collaborator"),
 		Content: resFileMarshaled,
 		SHA:     &requestFileSHA,

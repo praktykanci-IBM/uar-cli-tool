@@ -17,7 +17,7 @@ func getCbnID(useRepoNameInsteadOfCbnId bool, nameOrID string, githubClient *git
 		return nameOrID
 	}
 
-	_, currentCbns, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, "", nil)
+	_, currentCbns, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, "CBN", nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -25,7 +25,7 @@ func getCbnID(useRepoNameInsteadOfCbnId bool, nameOrID string, githubClient *git
 
 	var cbnID string
 	for _, cbn := range currentCbns {
-		cbnFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, *cbn.Name, nil)
+		cbnFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("CBN/%s", *cbn.Name), nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)

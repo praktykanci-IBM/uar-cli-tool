@@ -30,35 +30,33 @@ var startCmd = &cobra.Command{
 
 		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
 
-		_, currentCbns, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, "", nil)
+		_, currentCbns, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, "CBN", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+		} else {
+			for _, cbn := range currentCbns {
+				cbnFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("CBN/%s", *cbn.Name), nil)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
 
-		for _, cbn := range currentCbns {
-			cbnFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, *cbn.Name, nil)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+				cbnContentMarshaled, err := cbnFile.GetContent()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
 
-			cbnContentMarshaled, err := cbnFile.GetContent()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+				var cbnContent types.CbnDataCompleted
+				err = yaml.Unmarshal([]byte(cbnContentMarshaled), &cbnContent)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
 
-			var cbnContent types.CbnDataCompleted
-			err = yaml.Unmarshal([]byte(cbnContentMarshaled), &cbnContent)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
-
-			if cbnContent.Repo == repo && cbnContent.ExecutedBy == "" {
-				fmt.Fprintf(os.Stderr, "active CBN for this repository already exists\n")
-				os.Exit(1)
+				if cbnContent.Repo == repo && cbnContent.ExecutedBy == "" {
+					fmt.Fprintf(os.Stderr, "active CBN for this repository already exists\n")
+					os.Exit(1)
+				}
 			}
 		}
 
@@ -99,7 +97,7 @@ var startCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		_, _, err = githubClient.Repositories.CreateFile(context.Background(), configData.ORG_NAME, configData.CBN_DB_NAME, fmt.Sprintf("%s.yaml", newCbnID), &github.RepositoryContentFileOptions{
+		_, _, err = githubClient.Repositories.CreateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("CBN/%s.yaml", newCbnID), &github.RepositoryContentFileOptions{
 			Content: []byte(newCmdMarshaled),
 			Message: github.String(fmt.Sprintf("Start CBN %s", newCbnID)),
 		})

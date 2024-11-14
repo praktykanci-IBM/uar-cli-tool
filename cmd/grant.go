@@ -92,7 +92,7 @@ Outer:
 }
 
 func grantByUserAndRepo(user string, repo string, githubClient *github.Client) {
-	branches, _, err := githubClient.Repositories.ListBranches(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, nil)
+	branches, _, err := githubClient.Repositories.ListBranches(context.Background(), configData.ORG_NAME, configData.DB_NAME, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -101,7 +101,7 @@ func grantByUserAndRepo(user string, repo string, githubClient *github.Client) {
 	var requestBranch *github.Branch
 
 	for _, branch := range branches {
-		if *branch.Name == fmt.Sprintf("%s/%s", repo, user) {
+		if *branch.Name == fmt.Sprintf("user-access-records/%s/%s", repo, user) {
 			requestBranch = branch
 			break
 		}
@@ -118,13 +118,13 @@ func grantByUserAndRepo(user string, repo string, githubClient *github.Client) {
 }
 
 func grantAccess(commitSHA string, githubClient *github.Client) {
-	pullRequests, _, err := githubClient.PullRequests.ListPullRequestsWithCommit(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, commitSHA, nil)
+	pullRequests, _, err := githubClient.PullRequests.ListPullRequestsWithCommit(context.Background(), configData.ORG_NAME, configData.DB_NAME, commitSHA, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	_, _, err = githubClient.PullRequests.CreateReview(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, *pullRequests[0].Number, &github.PullRequestReviewRequest{
+	_, _, err = githubClient.PullRequests.CreateReview(context.Background(), configData.ORG_NAME, configData.DB_NAME, *pullRequests[0].Number, &github.PullRequestReviewRequest{
 		Body:  github.String("access granted"),
 		Event: github.String("APPROVE"),
 	})
@@ -133,7 +133,7 @@ func grantAccess(commitSHA string, githubClient *github.Client) {
 		os.Exit(1)
 	}
 
-	_, _, err = githubClient.PullRequests.Merge(context.Background(), configData.ORG_NAME, configData.UAR_DB_NAME, *pullRequests[0].Number, "access granted", &github.PullRequestOptions{
+	_, _, err = githubClient.PullRequests.Merge(context.Background(), configData.ORG_NAME, configData.DB_NAME, *pullRequests[0].Number, "access granted", &github.PullRequestOptions{
 		MergeMethod: "squash",
 	})
 	if err != nil {
