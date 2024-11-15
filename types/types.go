@@ -23,6 +23,7 @@ type RequestUserState string
 const (
 	Granted   RequestUserState = "granted"
 	Completed RequestUserState = "completed"
+	Removed   RequestUserState = "removed"
 )
 
 type CbnData struct {

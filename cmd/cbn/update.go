@@ -99,6 +99,48 @@ var updateCmd = &cobra.Command{
 					os.Exit(1)
 				}
 
+				requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s.yaml", strings.Split(cbnContent.Repo, "/")[0], strings.Split(cbnContent.Repo, "/")[1], user.Name), nil)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
+					os.Exit(1)
+				}
+
+				requestFileSHA := *requestFile.SHA
+				requestFileMarshaled, err := requestFile.GetContent()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+
+				var requestFileContent types.RequestDataCompleted
+				err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+
+				requestCompleted := types.RequestDataCompleted{
+					ID:            requestFileContent.ID,
+					State:         types.Removed,
+					Justification: requestFileContent.Justification,
+					RequestedOn:   requestFileContent.RequestedOn,
+					RequestedBy:   requestFileContent.RequestedBy,
+					CompletedOn:   requestFileContent.CompletedOn,
+					CompletedBy:   requestFileContent.CompletedBy,
+				}
+
+				resFileMarshaled, err := yaml.Marshal(requestCompleted)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+
+				_, _, _ = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s.yaml", strings.Split(cbnContent.Repo, "/")[0], strings.Split(cbnContent.Repo, "/")[1], user.Name), &github.RepositoryContentFileOptions{
+					Message: github.String("Removed user"),
+					Content: resFileMarshaled,
+					SHA:     &requestFileSHA,
+				})
+
 				cbnContentUpdated.UsersChanged = append(cbnContentUpdated.UsersChanged, user)
 			}
 		}

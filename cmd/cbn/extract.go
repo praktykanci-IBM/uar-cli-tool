@@ -81,12 +81,34 @@ var extractCmd = &cobra.Command{
 
 		cbnContent.Users = []types.CbnUser{}
 		for _, user := range usersWithAccess {
-			cbnContent.Users = append(cbnContent.Users, types.CbnUser{
-				Name:        strings.Split(*user.Name, ".")[0],
-				State:       types.Pending,
-				ValidatedOn: "",
-				ValidatedBy: "",
-			})
+
+			requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s", strings.Split(cbnContent.Repo, "/")[0], strings.Split(cbnContent.Repo, "/")[1], *user.Name), nil)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
+				os.Exit(1)
+			}
+			requestFileMarshaled, err := requestFile.GetContent()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+
+			var requestFileContent types.RequestDataCompleted
+			err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+
+			if requestFileContent.State != types.Removed {
+				cbnContent.Users = append(cbnContent.Users, types.CbnUser{
+					Name:        strings.Split(*user.Name, ".")[0],
+					State:       types.Pending,
+					ValidatedOn: "",
+					ValidatedBy: "",
+				})
+			}
+
 		}
 
 		currentTime := time.Now()
