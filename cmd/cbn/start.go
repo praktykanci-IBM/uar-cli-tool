@@ -16,19 +16,41 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var ownerName, repo, cbnType string
 var startCmd = &cobra.Command{
 	Use:     "start",
 	Short:   "Start the CBN",
 	Aliases: []string{"s"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
+		repo, err := cmd.Flags().GetString("repo")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if !strings.Contains(repo, "/") {
+			fmt.Fprintf(os.Stderr, "Error: Invalid repository name\nRepo name should be in format owner/repo\n")
+			os.Exit(1)
+		}
+
+		cbnType, err := cmd.Flags().GetString("type")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
 		if cbnType != "positive" && cbnType != "negative" {
 			fmt.Println("Error: type of CBN must be 'positive' or 'negative'.")
 			os.Exit(1)
 		}
 
 		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
+
+		startedBy, _, err := githubClient.Users.Get(context.Background(), "")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 
 		_, currentCbns, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, "CBN", nil)
 		if err != nil {
@@ -60,31 +82,31 @@ var startCmd = &cobra.Command{
 			}
 		}
 
-		repoOrg, repoName := strings.Split(repo, "/")[0], strings.Split(repo, "/")[1]
-		collaborators, _, err := githubClient.Repositories.ListCollaborators(context.Background(), repoOrg, repoName, nil)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "No such repository\n")
-			os.Exit(1)
-		}
+		// repoOrg, repoName := strings.Split(repo, "/")[0], strings.Split(repo, "/")[1]
+		// collaborators, _, err := githubClient.Repositories.ListCollaborators(context.Background(), repoOrg, repoName, nil)
+		// if err != nil {
+		// 	fmt.Fprintf(os.Stderr, "No such repository\n")
+		// 	os.Exit(1)
+		// }
 
-		isMaintainer := false
-		for _, collaborator := range collaborators {
-			if *collaborator.Login == ownerName && collaborator.Permissions["maintain"] {
-				isMaintainer = true
-				break
-			}
-		}
+		// isMaintainer := false
+		// for _, collaborator := range collaborators {
+		// 	if *collaborator.Login == ownerName && collaborator.Permissions["maintain"] {
+		// 		isMaintainer = true
+		// 		break
+		// 	}
+		// }
 
-		if !isMaintainer {
-			fmt.Fprintf(os.Stderr, "User %s is not a maintainer of %s\n", ownerName, repo)
-			os.Exit(1)
-		}
+		// if !isMaintainer {
+		// 	fmt.Fprintf(os.Stderr, "User %s is not a maintainer of %s\n", ownerName, repo)
+		// 	os.Exit(1)
+		// }
 
 		currentTime := time.Now()
 		formattedTime := currentTime.Format("02.01.2006, 15:04 MST")
 		newCbnID := uuid.New().String()
 		newCbn := types.CbnData{
-			StartedBy: ownerName,
+			StartedBy: *startedBy.Login,
 			StartedOn: formattedTime,
 			Repo:      repo,
 			Type:      cbnType,
@@ -111,15 +133,14 @@ var startCmd = &cobra.Command{
 }
 
 func init() {
-	startCmd.Flags().StringVarP(&ownerName, "owner-name", "o", "", "The owner of the repository")
-	startCmd.Flags().StringVarP(&repo, "repo", "r", "", "The repository in the format owner/repo")
-	startCmd.Flags().StringVarP(&cbnType, "type", "y", "", "The type of CBN (positive or negative)")
+	startCmd.Flags().StringP("repo", "r", "", "The repository in the format owner/repo")
+	startCmd.Flags().StringP("type", "y", "", "The type of CBN (positive or negative)")
 
-	startCmd.MarkFlagRequired("owner-name")
 	startCmd.MarkFlagRequired("repo")
 	startCmd.MarkFlagRequired("type")
 
 	startCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
 
+	startCmd.Flags().SortFlags = false
 	CbnCommand.AddCommand(startCmd)
 }
