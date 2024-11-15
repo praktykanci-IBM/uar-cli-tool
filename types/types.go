@@ -26,16 +26,6 @@ const (
 )
 
 type CbnData struct {
-	StartedBy   string    `yaml:"started_by"`
-	StartedOn   string    `yaml:"started_on"`
-	Repo        string    `yaml:"repo"`
-	Type        string    `yaml:"type"`
-	ExtractedBy string    `yaml:"extracted_by"`
-	ExtractedOn string    `yaml:"extracted_on"`
-	Users       []CbnUser `yaml:"users"`
-}
-
-type CbnDataCompleted struct {
 	StartedBy    string    `yaml:"started_by"`
 	StartedOn    string    `yaml:"started_on"`
 	Repo         string    `yaml:"repo"`
@@ -47,6 +37,19 @@ type CbnDataCompleted struct {
 	ExecutedOn   string    `yaml:"executed_on"`
 	UsersChanged []CbnUser `yaml:"userschanged"`
 }
+
+// type CbnDataCompleted struct {
+// 	StartedBy    string    `yaml:"started_by"`
+// 	StartedOn    string    `yaml:"started_on"`
+// 	Repo         string    `yaml:"repo"`
+// 	Type         string    `yaml:"type"`
+// 	ExtractedBy  string    `yaml:"extracted_by"`
+// 	ExtractedOn  string    `yaml:"extracted_on"`
+// 	Users        []CbnUser `yaml:"users"`
+// 	ExecutedBy   string    `yaml:"executed_by"`
+// 	ExecutedOn   string    `yaml:"executed_on"`
+// 	UsersChanged []CbnUser `yaml:"userschanged"`
+// }
 
 type CbnUserApproval string
 
