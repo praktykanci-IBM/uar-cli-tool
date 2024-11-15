@@ -68,7 +68,7 @@ var startCmd = &cobra.Command{
 					os.Exit(1)
 				}
 
-				var cbnContent types.CbnDataCompleted
+				var cbnContent types.CbnData
 				err = yaml.Unmarshal([]byte(cbnContentMarshaled), &cbnContent)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -106,11 +106,16 @@ var startCmd = &cobra.Command{
 		formattedTime := currentTime.Format("02.01.2006, 15:04 MST")
 		newCbnID := uuid.New().String()
 		newCbn := types.CbnData{
-			StartedBy: *startedBy.Login,
-			StartedOn: formattedTime,
-			Repo:      repo,
-			Type:      cbnType,
-			Users:     []types.CbnUser{},
+			StartedBy:    *startedBy.Login,
+			StartedOn:    formattedTime,
+			Repo:         repo,
+			Type:         cbnType,
+			Users:        []types.CbnUser{},
+			ExtractedBy:  "",
+			ExtractedOn:  "",
+			ExecutedBy:   "",
+			ExecutedOn:   "",
+			UsersChanged: []types.CbnUser{},
 		}
 
 		newCmdMarshaled, err := yaml.Marshal(newCbn)
@@ -139,7 +144,7 @@ func init() {
 	startCmd.MarkFlagRequired("repo")
 	startCmd.MarkFlagRequired("type")
 
-	startCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
+	startCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", configData.GITHUB_PAT, "GitHub personal access token")
 
 	startCmd.Flags().SortFlags = false
 	CbnCommand.AddCommand(startCmd)

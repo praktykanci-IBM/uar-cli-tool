@@ -153,7 +153,7 @@ func init() {
 	grantCmd.Flags().StringP("user", "u", "", "GitHub username requesting access")
 	grantCmd.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
 
-	grantCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
+	grantCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", configData.GITHUB_PAT, "GitHub personal access token")
 
 	grantCmd.Flags().SortFlags = false
 	rootCmd.AddCommand(grantCmd)

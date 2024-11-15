@@ -12,11 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func getCbnID(useRepoNameInsteadOfCbnId bool, nameOrID string, githubClient *github.Client) string {
-	if !useRepoNameInsteadOfCbnId {
-		return nameOrID
-	}
-
+func getCbnID(repoName string, githubClient *github.Client) string {
 	_, currentCbns, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, "CBN", nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -44,7 +40,7 @@ func getCbnID(useRepoNameInsteadOfCbnId bool, nameOrID string, githubClient *git
 			os.Exit(1)
 		}
 
-		if cbnContent.Repo == nameOrID {
+		if cbnContent.Repo == repoName && cbnContent.ExecutedBy == "" {
 			cbnID = strings.Split(*cbn.Name, ".")[0]
 			break
 		}
@@ -52,7 +48,7 @@ func getCbnID(useRepoNameInsteadOfCbnId bool, nameOrID string, githubClient *git
 	}
 
 	if cbnID == "" {
-		fmt.Fprintf(os.Stderr, "No such CBN for this repository\n")
+		fmt.Fprintf(os.Stderr, "No active CBN for this repository\n")
 		os.Exit(1)
 	}
 
