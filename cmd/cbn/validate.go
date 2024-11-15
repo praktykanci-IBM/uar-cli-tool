@@ -159,5 +159,7 @@ func init() {
 	validateCmd.MarkFlagRequired("action")
 
 	validateCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
+
+	validateCmd.Flags().SortFlags = false
 	CbnCommand.AddCommand(validateCmd)
 }
