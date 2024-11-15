@@ -98,6 +98,7 @@ var updateCmd = &cobra.Command{
 					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 					os.Exit(1)
 				}
+
 				cbnContentUpdated.UsersChanged = append(cbnContentUpdated.UsersChanged, user)
 			}
 		}
