@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"praktykanci/uar/configData"
-	. "praktykanci/uar/types"
+	"praktykanci/uar/types"
 
 	"github.com/google/go-github/v66/github"
 	"github.com/spf13/cobra"
@@ -16,7 +16,7 @@ import (
 )
 
 var AddCommand = &cobra.Command{
-	Use:     "add admin_name {uar_id | user_name repo}",
+	Use:     "add",
 	Short:   "Add a user as a collaborator",
 	Aliases: []string{"a"},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -26,7 +26,26 @@ var AddCommand = &cobra.Command{
 
 		if uarID == "" && (user == "" || repo == "") {
 			fmt.Println("Error: You must provide either a UAR ID or both a user and repo.")
-			return
+			cmd.Help()
+			os.Exit(1)
+		}
+
+		if uarID != "" && user != "" {
+			fmt.Println("Error: You cannot provide both a UAR ID and a user.")
+			cmd.Help()
+			os.Exit(1)
+		}
+
+		if user != "" && repo == "" {
+			fmt.Println("Error: You must provide both a user and a repo.")
+			cmd.Help()
+			os.Exit(1)
+		}
+
+		if repo != "" && !strings.Contains(repo, "/") {
+			fmt.Println("Error: Invalid repository name. Repo name should be in format owner/repo.")
+			cmd.Help()
+			os.Exit(1)
 		}
 
 		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
@@ -77,7 +96,7 @@ Outer:
 					os.Exit(1)
 				}
 
-				var requestFileContent RequestData
+				var requestFileContent types.RequestData
 				err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -117,14 +136,14 @@ func addByUserAndRepo(user string, repo string, githubClient *github.Client) {
 		os.Exit(1)
 	}
 
-	var requestFileContent RequestData
+	var requestFileContent types.RequestData
 	err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	if requestFileContent.State == Completed {
+	if requestFileContent.State == types.Completed {
 		fmt.Printf("User %s is already a collaborator of %s\n", user, repo)
 		os.Exit(0)
 	}
@@ -145,9 +164,9 @@ func addByUserAndRepo(user string, repo string, githubClient *github.Client) {
 		return
 	}
 
-	requestCompleted := RequestDataCompleted{
+	requestCompleted := types.RequestDataCompleted{
 		ID:            requestFileContent.ID,
-		State:         Completed,
+		State:         types.Completed,
 		Justification: requestFileContent.Justification,
 		RequestedOn:   requestFileContent.RequestedOn,
 		RequestedBy:   requestFileContent.RequestedBy,
@@ -176,14 +195,12 @@ func addByUserAndRepo(user string, repo string, githubClient *github.Client) {
 }
 
 func init() {
-	rootCmd.AddCommand(AddCommand)
-
-	AddCommand.Flags().StringP("admin", "a", "", "Admin's GitHub username")
-	AddCommand.Flags().StringP("id", "i", "", "UAR ID to add as a collaborator")
+	AddCommand.Flags().StringP("uar-id", "i", "", "UAR ID to add as a collaborator")
 	AddCommand.Flags().StringP("user", "u", "", "GitHub username requesting access")
 	AddCommand.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
 
 	AddCommand.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
 
-	AddCommand.MarkFlagRequired("admin")
+	AddCommand.Flags().SortFlags = false
+	rootCmd.AddCommand(AddCommand)
 }
