@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"praktykanci/uar/configData"
-	. "praktykanci/uar/configData"
-	. "praktykanci/uar/types"
+	"praktykanci/uar/types"
 
 	"github.com/google/go-github/v66/github"
 	"github.com/google/uuid"
@@ -23,22 +22,54 @@ var requestCmd = &cobra.Command{
 	Short:   "Request access to repository",
 	Long:    "Request access to selected repository with user ID, repository name, business justification and manager name",
 	Run: func(cmd *cobra.Command, args []string) {
+		userName, err := cmd.Flags().GetString("user")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 
-		userName, _ := cmd.Flags().GetString("user")
-		repo, _ := cmd.Flags().GetString("repo")
-		justification, _ := cmd.Flags().GetString("justification")
-		managerName, _ := cmd.Flags().GetString("manager")
+		repo, err := cmd.Flags().GetString("repo")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 
-		fmt.Printf("token: %s\n", GITHUB_PAT)
+		if conditions := strings.Split(repo, "/"); len(conditions) != 2 {
+			fmt.Fprintf(os.Stderr, "Error: Invalid repository name\nRepo name should be in format owner/repo\n")
+			os.Exit(1)
+		}
 
-		if userName == "" || repo == "" || justification == "" || managerName == "" {
-			fmt.Println("Error: All flags are required.")
+		justification, err := cmd.Flags().GetString("justification")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		managerName, err := cmd.Flags().GetString("manager")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
+
+		requestedByUser, _, err := githubClient.Users.Get(context.Background(), "")
+		if err != nil {
+			fmt.Println("Error:", err)
 			return
 		}
 
-		githubClient := github.NewClient(nil).WithAuthToken(GITHUB_PAT)
+		if userName == "" {
+			userName = *requestedByUser.Login
+		}
 
-		user, _, err := githubClient.Users.Get(context.Background(), "")
+		_, _, err = githubClient.Users.Get(context.Background(), userName)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		_, _, err = githubClient.Repositories.Get(context.Background(), strings.Split(repo, "/")[0], strings.Split(repo, "/")[1])
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -54,28 +85,16 @@ var requestCmd = &cobra.Command{
 			return
 		}
 
-		_, _, err = githubClient.Users.Get(context.Background(), userName)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		_, _, err = githubClient.Repositories.Get(context.Background(), strings.Split(repo, "/")[0], strings.Split(repo, "/")[1])
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
 		currentTime := time.Now()
 		formattedTime := currentTime.Format("02.01.2006, 15:04 MST")
 
 		id := uuid.New().String()
-		newRequest := RequestData{
+		newRequest := types.RequestData{
 			ID:            id,
-			State:         Granted,
+			State:         types.Granted,
 			Justification: justification,
 			RequestedOn:   formattedTime,
-			RequestedBy:   *user.Login,
+			RequestedBy:   *requestedByUser.Login,
 		}
 
 		content, err := yaml.Marshal(&newRequest)
@@ -119,7 +138,7 @@ var requestCmd = &cobra.Command{
 	},
 }
 
-func createRequestFile(githubClient *github.Client, branchName string, newRequest RequestData, repo string, userName string, options *github.RepositoryContentFileOptions, reviewer string, id string) {
+func createRequestFile(githubClient *github.Client, branchName string, newRequest types.RequestData, repo string, userName string, options *github.RepositoryContentFileOptions, reviewer string, id string) {
 	_, _, err := githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.DB_NAME, branchName, 0)
 	if err != nil {
 		baseRef, _, err := githubClient.Git.GetRef(context.Background(), configData.ORG_NAME, configData.DB_NAME, "refs/heads/main")
@@ -175,17 +194,17 @@ func createRequestFile(githubClient *github.Client, branchName string, newReques
 }
 
 func init() {
-	rootCmd.AddCommand(requestCmd)
-
-	requestCmd.Flags().StringP("user", "u", "", "GitHub username requesting access")
+	requestCmd.Flags().StringP("user", "u", "", "User's GitHub handle for whom access is requested")
 	requestCmd.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
 	requestCmd.Flags().StringP("justification", "j", "", "Business justification for access")
-	requestCmd.Flags().StringP("manager", "m", "", "Manager's GitHub username")
+	requestCmd.Flags().StringP("manager", "m", "", "Users's manager's GitHub handle")
 
-	requestCmd.MarkFlagRequired("user")
 	requestCmd.MarkFlagRequired("repo")
 	requestCmd.MarkFlagRequired("justification")
 	requestCmd.MarkFlagRequired("manager")
 
-	requestCmd.Flags().StringVarP(&GITHUB_PAT, "token", "t", GITHUB_PAT, "GitHub personal access token")
+	requestCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", configData.GITHUB_PAT, "GitHub personal access token")
+
+	requestCmd.Flags().SortFlags = false
+	rootCmd.AddCommand(requestCmd)
 }
