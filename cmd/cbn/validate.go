@@ -37,18 +37,6 @@ var validateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if cbnID == "" && repoName == "" {
-			fmt.Fprintln(os.Stderr, "Error: Either cbn_id or repo name is required.")
-			cmd.Help()
-			os.Exit(1)
-		}
-
-		if cbnID != "" && repoName != "" {
-			fmt.Fprintln(os.Stderr, "Error: You cannot provide both a CBN ID and a repo name.")
-			cmd.Help()
-			os.Exit(1)
-		}
-
 		action, err := cmd.Flags().GetString("action")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -151,12 +139,14 @@ var validateCmd = &cobra.Command{
 
 func init() {
 	validateCmd.Flags().StringP("user", "u", "", "Name of the user to validate")
-	validateCmd.Flags().StringP("cbn-id", "i", "", "CBN ID (use either this or --repo)")
-	validateCmd.Flags().StringP("repo", "r", "", "Repository name (use either this or --cbn-id)")
+	validateCmd.Flags().StringP("cbn-id", "i", "", "CBN ID")
+	validateCmd.Flags().StringP("repo", "r", "", "Repository name")
 	validateCmd.Flags().StringP("action", "a", "", "Validation action: approve or reject")
 
 	validateCmd.MarkFlagRequired("user")
 	validateCmd.MarkFlagRequired("action")
+	validateCmd.MarkFlagsMutuallyExclusive("cbn-id", "repo")
+	validateCmd.MarkFlagsOneRequired("cbn-id", "repo")
 
 	validateCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
 

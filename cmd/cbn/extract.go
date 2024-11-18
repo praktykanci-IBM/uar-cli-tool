@@ -32,18 +32,6 @@ var extractCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if cbnID == "" && repoName == "" {
-			fmt.Println("Error: Either cbn_id or repo name is required.")
-			cmd.Help()
-			os.Exit(1)
-		}
-
-		if cbnID != "" && repoName != "" {
-			fmt.Println("Error: You cannot provide both a CBN ID and a repo name.")
-			cmd.Help()
-			os.Exit(1)
-		}
-
 		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
 
 		if cbnID == "" {
@@ -146,6 +134,9 @@ var extractCmd = &cobra.Command{
 func init() {
 	extractCmd.Flags().StringP("cbn-id", "i", "", "The CBN ID to extract data for")
 	extractCmd.Flags().StringP("repo", "r", "", "The repository name ")
+
+	extractCmd.MarkFlagsMutuallyExclusive("cbn-id", "repo")
+	extractCmd.MarkFlagsOneRequired("cbn-id", "repo")
 
 	extractCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
 

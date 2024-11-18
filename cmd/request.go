@@ -34,8 +34,9 @@ var requestCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if conditions := strings.Split(repo, "/"); len(conditions) != 2 {
+		if !strings.Contains(repo, "/") {
 			fmt.Fprintf(os.Stderr, "Error: Invalid repository name\nRepo name should be in format owner/repo\n")
+			cmd.Help()
 			os.Exit(1)
 		}
 
