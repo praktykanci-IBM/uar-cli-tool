@@ -15,30 +15,26 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var AddCommand = &cobra.Command{
+var addCommand = &cobra.Command{
 	Use:     "add",
 	Short:   "Add a user as a collaborator",
 	Aliases: []string{"a"},
 	Run: func(cmd *cobra.Command, args []string) {
-		uarID, _ := cmd.Flags().GetString("uar-id")
-		user, _ := cmd.Flags().GetString("user")
-		repo, _ := cmd.Flags().GetString("repo")
-
-		if uarID == "" && (user == "" || repo == "") {
-			fmt.Println("Error: You must provide either a UAR ID or both a user and repo.")
-			cmd.Help()
+		uarID, err := cmd.Flags().GetString("uar-id")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		if uarID != "" && user != "" {
-			fmt.Println("Error: You cannot provide both a UAR ID and a user.")
-			cmd.Help()
+		user, err := cmd.Flags().GetString("user")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		if user != "" && repo == "" {
-			fmt.Println("Error: You must provide both a user and a repo.")
-			cmd.Help()
+		repo, err := cmd.Flags().GetString("repo")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -195,12 +191,17 @@ func addByUserAndRepo(user string, repo string, githubClient *github.Client) {
 }
 
 func init() {
-	AddCommand.Flags().StringP("uar-id", "i", "", "UAR ID to add as a collaborator")
-	AddCommand.Flags().StringP("user", "u", "", "GitHub username requesting access")
-	AddCommand.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
+	addCommand.Flags().StringP("uar-id", "i", "", "UAR ID to add as a collaborator")
+	addCommand.Flags().StringP("user", "u", "", "GitHub username requesting access")
+	addCommand.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
 
-	AddCommand.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", configData.GITHUB_PAT, "GitHub personal access token")
+	addCommand.MarkFlagsMutuallyExclusive("uar-id", "user")
+	addCommand.MarkFlagsMutuallyExclusive("uar-id", "repo")
+	addCommand.MarkFlagsRequiredTogether("user", "repo")
+	addCommand.MarkFlagsOneRequired("uar-id", "user")
 
-	AddCommand.Flags().SortFlags = false
-	rootCmd.AddCommand(AddCommand)
+	addCommand.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", configData.GITHUB_PAT, "GitHub personal access token")
+
+	addCommand.Flags().SortFlags = false
+	rootCmd.AddCommand(addCommand)
 }

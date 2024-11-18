@@ -16,25 +16,21 @@ var grantCmd = &cobra.Command{
 	Short:   "Grant a request",
 	Aliases: []string{"g"},
 	Run: func(cmd *cobra.Command, args []string) {
-		uarID, _ := cmd.Flags().GetString("uar-id")
-		user, _ := cmd.Flags().GetString("user")
-		repo, _ := cmd.Flags().GetString("repo")
-
-		if uarID == "" && (user == "" || repo == "") {
-			fmt.Println("Error: You must provide either a UAR ID or both a user name and a repo.")
-			cmd.Help()
+		uarID, err := cmd.Flags().GetString("uar-id")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		if uarID != "" && user != "" {
-			fmt.Println("Error: You cannot provide both a UAR ID and a user name.")
-			cmd.Help()
+		user, err := cmd.Flags().GetString("user")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		if user != "" && repo == "" {
-			fmt.Println("Error: You must provide both a user name and a repo.")
-			cmd.Help()
+		repo, err := cmd.Flags().GetString("repo")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -152,6 +148,11 @@ func init() {
 	grantCmd.Flags().StringP("uar-id", "i", "", "UAR ID to grant access")
 	grantCmd.Flags().StringP("user", "u", "", "GitHub username requesting access")
 	grantCmd.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
+
+	grantCmd.MarkFlagsMutuallyExclusive("uar-id", "user")
+	grantCmd.MarkFlagsMutuallyExclusive("uar-id", "repo")
+	grantCmd.MarkFlagsRequiredTogether("user", "repo")
+	grantCmd.MarkFlagsOneRequired("uar-id", "user")
 
 	grantCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", configData.GITHUB_PAT, "GitHub personal access token")
 
