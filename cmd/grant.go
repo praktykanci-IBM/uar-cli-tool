@@ -33,20 +33,14 @@ var grantCmd = &cobra.Command{
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		org, err := cmd.Flags().GetBool("repo")
+		org, err := cmd.Flags().GetString("org")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		team, err := cmd.Flags().GetString("repo")
+		team, err := cmd.Flags().GetString("team")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-
-		if repo != "" && !strings.Contains(repo, "/") {
-			fmt.Println("Error: Invalid repository name. Repo name should be in format owner/repo.")
-			cmd.Help()
 			os.Exit(1)
 		}
 
@@ -55,11 +49,11 @@ var grantCmd = &cobra.Command{
 		if uarID != "" {
 			grantByUarID(uarID, githubClient)
 		} else if user != "" && repo != "" {
-			grantByUserAndRepo(user, repo, githubClient)
-		} else if user != "" && org {
-			grantByUsernameOrg(user, githubClient)
-		} else if user != "" && team != "" {
-			grantByUserAndTeam(user, team, githubClient)
+			grantByUserAndRepo(user, org, repo, githubClient)
+		} else if user != "" && org != "" && team == "" {
+			grantByUsernameOrg(user, org, githubClient)
+		} else if user != "" && org != "" && team != "" {
+			grantByUserAndTeam(user, org, team, githubClient)
 		}
 
 		os.Exit(0)
@@ -107,7 +101,7 @@ Outer:
 	fmt.Printf("Access granted to UAR ID %s\n", uarID)
 }
 
-func grantByUserAndRepo(user string, repo string, githubClient *github.Client) {
+func grantByUserAndRepo(user string, org string, repo string, githubClient *github.Client) {
 	branches, _, err := githubClient.Repositories.ListBranches(context.Background(), configData.ORG_NAME, configData.DB_NAME, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -117,33 +111,7 @@ func grantByUserAndRepo(user string, repo string, githubClient *github.Client) {
 	var requestBranch *github.Branch
 
 	for _, branch := range branches {
-		if *branch.Name == fmt.Sprintf("user-access-records/%s/%s", repo, user) {
-			requestBranch = branch
-			break
-		}
-	}
-
-	if requestBranch == nil {
-		fmt.Fprintf(os.Stderr, "Error: branch not found\n")
-		os.Exit(1)
-	}
-
-	grantAccess(*requestBranch.Commit.SHA, githubClient)
-
-	fmt.Printf("Access granted to %s on %s\n", user, repo)
-}
-
-func grantByUsernameOrg(user string, githubClient *github.Client) {
-	branches, _, err := githubClient.Repositories.ListBranches(context.Background(), configData.ORG_NAME, configData.DB_NAME, nil)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	var requestBranch *github.Branch
-
-	for _, branch := range branches {
-		if *branch.Name == fmt.Sprintf("org-access-records/%s", user) {
+		if *branch.Name == fmt.Sprintf("user-access-records/%s/%s/%s", org, repo, user) {
 			requestBranch = branch
 			break
 		}
@@ -159,7 +127,7 @@ func grantByUsernameOrg(user string, githubClient *github.Client) {
 	fmt.Printf("Access granted to %s\n", user)
 }
 
-func grantByUserAndTeam(user string, team string, githubClient *github.Client) {
+func grantByUsernameOrg(user string, org string, githubClient *github.Client) {
 	branches, _, err := githubClient.Repositories.ListBranches(context.Background(), configData.ORG_NAME, configData.DB_NAME, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -169,7 +137,33 @@ func grantByUserAndTeam(user string, team string, githubClient *github.Client) {
 	var requestBranch *github.Branch
 
 	for _, branch := range branches {
-		if *branch.Name == fmt.Sprintf("team-access-records/%s/%s", team, user) {
+		if *branch.Name == fmt.Sprintf("org-access-records/%s/%s", org, user) {
+			requestBranch = branch
+			break
+		}
+	}
+
+	if requestBranch == nil {
+		fmt.Fprintf(os.Stderr, "Error: branch not found\n")
+		os.Exit(1)
+	}
+
+	grantAccess(*requestBranch.Commit.SHA, githubClient)
+
+	fmt.Printf("Access granted to %s\n", user)
+}
+
+func grantByUserAndTeam(user string, org string, team string, githubClient *github.Client) {
+	branches, _, err := githubClient.Repositories.ListBranches(context.Background(), configData.ORG_NAME, configData.DB_NAME, nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	var requestBranch *github.Branch
+
+	for _, branch := range branches {
+		if *branch.Name == fmt.Sprintf("team-access-records/%s/%s/%s", org, team, user) {
 			requestBranch = branch
 			break
 		}
@@ -213,12 +207,12 @@ func grantAccess(commitSHA string, githubClient *github.Client) {
 func init() {
 	grantCmd.Flags().StringP("uar-id", "i", "", "UAR ID to grant access")
 	grantCmd.Flags().StringP("user", "u", "", "GitHub username requesting access")
-	grantCmd.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
+	grantCmd.Flags().StringP("repo", "r", "", "Repository name")
 	grantCmd.Flags().StringP("team", "e", "", "Team name")
-	grantCmd.Flags().BoolP("org", "o", false, "Organization")
+	grantCmd.Flags().StringP("org", "o", "", "Organization")
 
 	grantCmd.MarkFlagsMutuallyExclusive("uar-id", "user")
-	grantCmd.MarkFlagsMutuallyExclusive("uar-id", "repo", "team", "org")
+	grantCmd.MarkFlagsMutuallyExclusive("uar-id", "repo", "team")
 	grantCmd.MarkFlagsOneRequired("uar-id", "user")
 
 	grantCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", configData.GITHUB_PAT, "GitHub personal access token")
