@@ -33,6 +33,8 @@ var loginCommand = &cobra.Command{
 		configPath := filepath.Join(configDir, "uar")
 		viper.AddConfigPath(configPath)
 
+		os.Mkdir(configPath, 0755)
+
 		_, err = os.Open(filepath.Join(configPath, "config.toml"))
 		if err != nil {
 			if os.IsNotExist(err) {
