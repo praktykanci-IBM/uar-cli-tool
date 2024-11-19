@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"praktykanci/uar/configData"
@@ -29,14 +28,8 @@ var requestCmd = &cobra.Command{
 		}
 
 		repo, _ := cmd.Flags().GetString("repo")
-		org, _ := cmd.Flags().GetBool("org")
+		org, _ := cmd.Flags().GetString("org")
 		team, _ := cmd.Flags().GetString("team")
-
-		if !strings.Contains(repo, "/") && repo != "" {
-			fmt.Fprintf(os.Stderr, "Error: Invalid repository name\nRepo name should be in format owner/repo\n")
-			cmd.Help()
-			os.Exit(1)
-		}
 
 		justification, err := cmd.Flags().GetString("justification")
 		if err != nil {
@@ -68,7 +61,7 @@ var requestCmd = &cobra.Command{
 			return
 		}
 		if repo != "" {
-			_, _, err = githubClient.Repositories.Get(context.Background(), strings.Split(repo, "/")[0], strings.Split(repo, "/")[1])
+			_, _, err = githubClient.Repositories.Get(context.Background(), org, repo)
 			if err != nil {
 				fmt.Println("Error:", err)
 				return
@@ -106,14 +99,14 @@ var requestCmd = &cobra.Command{
 		var branchName, targetPath string
 
 		if repo != "" {
-			branchName = fmt.Sprintf("user-access-records/%s/%s/%s", strings.Split(repo, "/")[0], strings.Split(repo, "/")[1], userName)
-			targetPath = fmt.Sprintf("user-access-records/%s/%s/%s.yaml", strings.Split(repo, "/")[0], strings.Split(repo, "/")[1], userName)
-		} else if org {
-			branchName = fmt.Sprintf("org-access-records/%s", userName)
-			targetPath = fmt.Sprintf("org-access-records/%s.yaml", userName)
-		} else if team != "" {
-			branchName = fmt.Sprintf("team-access-records/%s/%s", team, userName)
-			targetPath = fmt.Sprintf("team-access-records/%s/%s.yaml", team, userName)
+			branchName = fmt.Sprintf("user-access-records/%s/%s/%s", org, repo, userName)
+			targetPath = fmt.Sprintf("user-access-records/%s/%s/%s.yaml", org, repo, userName)
+		} else if org != "" && team == "" {
+			branchName = fmt.Sprintf("org-access-records/%s/%s", org, userName)
+			targetPath = fmt.Sprintf("org-access-records/%s/%s.yaml", org, userName)
+		} else if org != "" && team != "" {
+			branchName = fmt.Sprintf("team-access-records/%s/%s/%s", org, team, userName)
+			targetPath = fmt.Sprintf("team-access-records/%s/%s/%s.yaml", org, team, userName)
 		}
 
 		commitMessage := "Created a file with request data"
@@ -211,12 +204,11 @@ func init() {
 	requestCmd.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
 	requestCmd.Flags().StringP("justification", "j", "", "Business justification for access")
 	requestCmd.Flags().StringP("manager", "m", "", "Users's manager's GitHub handle")
-	requestCmd.Flags().BoolP("org", "o", false, "Organization")
+	requestCmd.Flags().StringP("org", "o", "", "Organization")
 	requestCmd.Flags().StringP("team", "", "", "Team name")
 
-	requestCmd.MarkFlagsMutuallyExclusive("repo", "team", "org")
-	requestCmd.MarkFlagsOneRequired("repo", "team", "org")
-
+	requestCmd.MarkFlagsMutuallyExclusive("repo", "team")
+	requestCmd.MarkFlagRequired("org")
 	requestCmd.MarkFlagRequired("justification")
 	requestCmd.MarkFlagRequired("manager")
 
