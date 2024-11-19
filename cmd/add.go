@@ -207,34 +207,6 @@ func addByUarID(uarID string, githubClient *github.Client) {
 		}
 	}
 
-	// for _, orgRequestFileWithoutData := range orgRequestFiles {
-	// 	requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s", *orgRequestFileWithoutData.Name), nil)
-	// 	if err != nil {
-	// 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-	// 		os.Exit(1)
-	// 	}
-
-	// 	requestFileMarshaled, err := requestFile.GetContent()
-	// 	if err != nil {
-	// 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-	// 		os.Exit(1)
-	// 	}
-
-	// 	var requestFileContent types.RequestData
-	// 	err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
-	// 	if err != nil {
-	// 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-	// 		os.Exit(1)
-	// 	}
-
-	// 	if requestFileContent.ID == uarID {
-	// 		// username := strings.Split(*requestFile.Name, ".")[0]
-
-	// 		// addToOrg(username, githubClient)
-	// 		return
-	// 	}
-	// }
-
 	fmt.Fprintf(os.Stderr, "Request with ID %s not found\n", uarID)
 	os.Exit(1)
 }
