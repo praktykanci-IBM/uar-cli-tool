@@ -38,13 +38,7 @@ var addCommand = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if repo != "" && !strings.Contains(repo, "/") {
-			fmt.Println("Error: Invalid repository name. Repo name should be in format owner/repo.")
-			cmd.Help()
-			os.Exit(1)
-		}
-
-		org, err := cmd.Flags().GetBool("org")
+		org, err := cmd.Flags().GetString("org")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -60,12 +54,12 @@ var addCommand = &cobra.Command{
 
 		if uarID != "" {
 			addByUarID(uarID, githubClient)
-		} else if repo != "" {
-			addToRepo(user, repo, githubClient)
-		} else if org {
-			addToOrg(user, githubClient)
+		} else if org != "" {
+			addToOrg(user, org, githubClient)
+		} else if team != "" {
+			addToTeam(user, org, team, githubClient)
 		} else {
-			addToTeam(user, team, githubClient)
+			addToRepo(user, org, repo, githubClient)
 		}
 	},
 }
@@ -113,9 +107,7 @@ func addByUarID(uarID string, githubClient *github.Client) {
 
 				if requestFileContent.ID == uarID {
 					username := strings.Split(*requestFile.Name, ".")[0]
-					repo := fmt.Sprintf("%s/%s", *ownerDir.Name, *repoDir.Name)
-
-					addToRepo(username, repo, githubClient)
+					addToRepo(username, *ownerDir.Name, *repoDir.Name, githubClient)
 					return
 				}
 			}
@@ -128,15 +120,66 @@ func addByUarID(uarID string, githubClient *github.Client) {
 		os.Exit(1)
 	}
 
-	for _, teamDir := range teamsDirs {
-		_, requestFiles, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s", *teamDir.Name), nil)
+	for _, orgDir := range teamsDirs {
+		_, teamDirs, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s", *orgDir.Name), nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		for _, teamDir := range teamDirs {
+			_, requestFiles, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s/%s", *orgDir.Name, *teamDir.Name), nil)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+
+			for _, requestFileWithoutData := range requestFiles {
+				requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s/%s/%s", *orgDir.Name, *teamDir.Name, *requestFileWithoutData.Name), nil)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+
+				requestFileMarshaled, err := requestFile.GetContent()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+
+				var requestFileContent types.RequestData
+				err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+
+				if requestFileContent.ID == uarID {
+					username := strings.Split(*requestFile.Name, ".")[0]
+					team := *teamDir.Name
+
+					addToTeam(username, *orgDir.Name, team, githubClient)
+					return
+				}
+			}
+		}
+	}
+
+	_, orgsDirs, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, "org-access-records", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	for _, orgDir := range orgsDirs {
+		_, requestFiles, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s", *orgDir.Name), nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
 		for _, requestFileWithoutData := range requestFiles {
-			requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s/%s", *teamDir.Name, *requestFileWithoutData.Name), nil)
+			requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s/%s", *orgDir.Name, *requestFileWithoutData.Name), nil)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
@@ -157,54 +200,47 @@ func addByUarID(uarID string, githubClient *github.Client) {
 
 			if requestFileContent.ID == uarID {
 				username := strings.Split(*requestFile.Name, ".")[0]
-				team := *teamDir.Name
 
-				addToTeam(username, team, githubClient)
+				addToOrg(username, *orgDir.Name, githubClient)
 				return
 			}
 		}
 	}
 
-	_, orgRequestFiles, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, "org-access-records", nil)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	// for _, orgRequestFileWithoutData := range orgRequestFiles {
+	// 	requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s", *orgRequestFileWithoutData.Name), nil)
+	// 	if err != nil {
+	// 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	// 		os.Exit(1)
+	// 	}
 
-	for _, orgRequestFileWithoutData := range orgRequestFiles {
-		requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s", *orgRequestFileWithoutData.Name), nil)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+	// 	requestFileMarshaled, err := requestFile.GetContent()
+	// 	if err != nil {
+	// 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	// 		os.Exit(1)
+	// 	}
 
-		requestFileMarshaled, err := requestFile.GetContent()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+	// 	var requestFileContent types.RequestData
+	// 	err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
+	// 	if err != nil {
+	// 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	// 		os.Exit(1)
+	// 	}
 
-		var requestFileContent types.RequestData
-		err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+	// 	if requestFileContent.ID == uarID {
+	// 		// username := strings.Split(*requestFile.Name, ".")[0]
 
-		if requestFileContent.ID == uarID {
-			username := strings.Split(*requestFile.Name, ".")[0]
-
-			addToOrg(username, githubClient)
-			return
-		}
-	}
+	// 		// addToOrg(username, githubClient)
+	// 		return
+	// 	}
+	// }
 
 	fmt.Fprintf(os.Stderr, "Request with ID %s not found\n", uarID)
 	os.Exit(1)
 }
 
-func addToRepo(user string, repo string, githubClient *github.Client) {
-	requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s.yaml", repo, user), nil)
+func addToRepo(user string, org string, repo string, githubClient *github.Client) {
+	requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s.yaml", org, repo, user), nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -229,8 +265,7 @@ func addToRepo(user string, repo string, githubClient *github.Client) {
 		os.Exit(0)
 	}
 
-	orgName, repoName := strings.Split(repo, "/")[0], strings.Split(repo, "/")[1]
-	_, _, err = githubClient.Repositories.AddCollaborator(context.Background(), orgName, repoName, user, nil)
+	_, _, err = githubClient.Repositories.AddCollaborator(context.Background(), org, repo, user, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -255,14 +290,13 @@ func addToRepo(user string, repo string, githubClient *github.Client) {
 		CompletedBy:   *completedBy.Login,
 	}
 
-	// requestFileContent.State = Completed
 	resFileMarshaled, err := yaml.Marshal(requestCompleted)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s.yaml", repo, user), &github.RepositoryContentFileOptions{
+	_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s.yaml", org, repo, user), &github.RepositoryContentFileOptions{
 		Message: github.String("Add collaborator"),
 		Content: resFileMarshaled,
 		SHA:     &requestFileSHA,
@@ -272,13 +306,13 @@ func addToRepo(user string, repo string, githubClient *github.Client) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("User %s added as a collaborator of %s\n", user, repo)
+	fmt.Printf("User %s added as a collaborator of %s/%s\n", org, user, repo)
 }
 
-func addToOrg(user string, githubClient *github.Client) {
-	requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s.yaml", user), nil)
+func addToOrg(user string, org string, githubClient *github.Client) {
+	requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s/%s.yaml", org, user), nil)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -305,11 +339,11 @@ func addToOrg(user string, githubClient *github.Client) {
 	}
 
 	if requestFileContent.State == types.Completed {
-		fmt.Printf("User %s is already a member of %s\n", user, configData.ORG_NAME)
+		fmt.Printf("User %s is already a member of %s\n", user, org)
 		os.Exit(0)
 	}
 
-	_, _, err = githubClient.Organizations.CreateOrgInvitation(context.Background(), configData.ORG_NAME, &github.CreateOrgInvitationOptions{
+	_, _, err = githubClient.Organizations.CreateOrgInvitation(context.Background(), org, &github.CreateOrgInvitationOptions{
 		InviteeID: &userID,
 	})
 	if err != nil {
@@ -342,7 +376,7 @@ func addToOrg(user string, githubClient *github.Client) {
 		os.Exit(1)
 	}
 
-	_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s.yaml", user), &github.RepositoryContentFileOptions{
+	_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s/%s.yaml", org, user), &github.RepositoryContentFileOptions{
 		Message: github.String("Add member"),
 		Content: resFileMarshaled,
 		SHA:     &requestFileSHA,
@@ -352,11 +386,11 @@ func addToOrg(user string, githubClient *github.Client) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("User %s added as a member of %s\n", user, configData.ORG_NAME)
+	fmt.Printf("User %s added as a member of %s\n", user, org)
 }
 
-func addToTeam(user string, team string, githubClient *github.Client) {
-	requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s/%s.yaml", team, user), nil)
+func addToTeam(user string, org string, team string, githubClient *github.Client) {
+	requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s/%s/%s.yaml", org, team, user), nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -377,11 +411,11 @@ func addToTeam(user string, team string, githubClient *github.Client) {
 	}
 
 	if requestFileContent.State == types.Completed {
-		fmt.Printf("User %s is already a member of team %s\n", user, team)
+		fmt.Printf("User %s is already a member of team %s in %s\n", user, team, org)
 		os.Exit(0)
 	}
 
-	_, _, err = githubClient.Teams.AddTeamMembershipBySlug(context.Background(), configData.ORG_NAME, team, user, nil)
+	_, _, err = githubClient.Teams.AddTeamMembershipBySlug(context.Background(), org, team, user, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -412,7 +446,7 @@ func addToTeam(user string, team string, githubClient *github.Client) {
 		os.Exit(1)
 	}
 
-	_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s/%s.yaml", team, user), &github.RepositoryContentFileOptions{
+	_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s/%s/%s.yaml", org, team, user), &github.RepositoryContentFileOptions{
 		Message: github.String("Add team member"),
 		Content: resFileMarshaled,
 		SHA:     &requestFileSHA,
@@ -422,19 +456,23 @@ func addToTeam(user string, team string, githubClient *github.Client) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("User %s added as a member of team %s\n", user, team)
+	fmt.Printf("User %s added as a member of team %s in %s\n", user, team, org)
 }
 
 func init() {
 	addCommand.Flags().StringP("uar-id", "i", "", "UAR ID to add as a collaborator")
 	addCommand.Flags().StringP("user", "u", "", "GitHub username requesting access")
+	addCommand.Flags().StringP("org", "o", "", "Organization")
 	addCommand.Flags().StringP("repo", "r", "", "Repository name (owner/repo)")
-	addCommand.Flags().BoolP("org", "o", false, "Organization")
 	addCommand.Flags().StringP("team", "e", "", "Team name")
 
-	addCommand.MarkFlagsMutuallyExclusive("uar-id", "repo", "org", "team")
-	addCommand.MarkFlagsOneRequired("uar-id", "repo", "org", "team")
-	addCommand.MarkFlagsOneRequired("uar-id", "user")
+	addCommand.MarkFlagsOneRequired("uar-id", "user", "org")
+	addCommand.MarkFlagsRequiredTogether("user", "org")
+	addCommand.MarkFlagsMutuallyExclusive("uar-id", "user")
+	addCommand.MarkFlagsMutuallyExclusive("uar-id", "org")
+	addCommand.MarkFlagsMutuallyExclusive("uar-id", "repo")
+	addCommand.MarkFlagsMutuallyExclusive("uar-id", "team")
+	addCommand.MarkFlagsMutuallyExclusive("org", "team")
 
 	addCommand.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", configData.GITHUB_PAT, "GitHub personal access token")
 
