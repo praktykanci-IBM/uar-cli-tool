@@ -101,7 +101,7 @@ var extractCmd = &cobra.Command{
 						if fmt.Sprintf("%s.yaml", u.Name) == *requestFile.Name {
 							userInList = true
 							cbnContent.Users[i].ListOfAccesses = append(cbnContent.Users[i].ListOfAccesses, types.UserAccess{
-								AccessType:    "repository",
+								AccessType:    types.Repo,
 								AccessTo:      *repo.Name,
 								Justification: requestFileContent.Justification,
 							})
@@ -116,7 +116,7 @@ var extractCmd = &cobra.Command{
 							ValidatedBy:    "",
 						}
 						newUser.ListOfAccesses = append(newUser.ListOfAccesses, types.UserAccess{
-							AccessType:    "repository",
+							AccessType:    types.Repo,
 							AccessTo:      *repo.Name,
 							Justification: requestFileContent.Justification,
 						})
@@ -161,7 +161,7 @@ var extractCmd = &cobra.Command{
 					if fmt.Sprintf("%s.yaml", u.Name) == *requestFile.Name {
 						userInList = true
 						cbnContent.Users[i].ListOfAccesses = append(cbnContent.Users[i].ListOfAccesses, types.UserAccess{
-							AccessType:    "organization",
+							AccessType:    types.Org,
 							AccessTo:      cbnContent.Org,
 							Justification: requestFileContent.Justification,
 						})
@@ -176,7 +176,7 @@ var extractCmd = &cobra.Command{
 						ValidatedBy:    "",
 					}
 					newUser.ListOfAccesses = append(newUser.ListOfAccesses, types.UserAccess{
-						AccessType:    "organization",
+						AccessType:    types.Org,
 						AccessTo:      cbnContent.Org,
 						Justification: requestFileContent.Justification,
 					})
@@ -230,7 +230,7 @@ var extractCmd = &cobra.Command{
 						if fmt.Sprintf("%s.yaml", u.Name) == *requestFile.Name {
 							userInList = true
 							cbnContent.Users[i].ListOfAccesses = append(cbnContent.Users[i].ListOfAccesses, types.UserAccess{
-								AccessType:    "team",
+								AccessType:    types.Team,
 								AccessTo:      *team.Name,
 								Justification: requestFileContent.Justification,
 							})
@@ -245,7 +245,7 @@ var extractCmd = &cobra.Command{
 							ValidatedBy:    "",
 						}
 						newUser.ListOfAccesses = append(newUser.ListOfAccesses, types.UserAccess{
-							AccessType:    "team",
+							AccessType:    types.Team,
 							AccessTo:      *team.Name,
 							Justification: requestFileContent.Justification,
 						})
