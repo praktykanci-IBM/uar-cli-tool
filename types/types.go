@@ -61,6 +61,7 @@ const (
 )
 
 type UserAccess struct {
+	AccessType    string `yaml:"access_type"`
 	AccessTo      string `yaml:"access_to"`
 	Justification string `yaml:"justification"`
 }
