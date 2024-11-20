@@ -57,16 +57,6 @@ var extractCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// _, usersWithAccess, res, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s", cbnContent.Repo), nil)
-		// if err != nil {
-		// 	if res.StatusCode == 404 {
-		// 		fmt.Fprintf(os.Stderr, "No access records for such repository\n")
-		// 	} else {
-		// 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		// 	}
-		// 	os.Exit(1)
-		// }
-
 		cbnContent.Users = []types.CbnUser{}
 		_, repos, res, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s", cbnContent.Org), nil)
 		if err != nil {
@@ -311,24 +301,12 @@ var extractCmd = &cobra.Command{
 				os.Exit(1)
 			}
 			for i, userInCbn := range prCbnContent.Users {
-				// fmt.Println(*user.Name, userInCbn.Name)
 				if user.Name == userInCbn.Name {
 					if cbnContent.Type == "positive" {
 						prCbnContent.Users[i].State = types.Aproved
 					} else {
 						prCbnContent.Users[i].State = types.Rejected
 					}
-					// currentTime := time.Now()
-					// formattedTime := currentTime.Format("02.01.2006, 15:04 MST")
-
-					// validatedBy, _, err := githubClient.Users.Get(context.Background(), "")
-					// if err != nil {
-					// 	fmt.Println("Error:", err)
-					// 	return
-					// }
-
-					// cbnContent.Users[i].ValidatedBy = *validatedBy.Login
-					// cbnContent.Users[i].ValidatedOn = formattedTime
 
 					break
 				}
