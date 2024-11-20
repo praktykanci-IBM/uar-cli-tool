@@ -29,7 +29,7 @@ const (
 type CbnData struct {
 	StartedBy    string    `yaml:"started_by"`
 	StartedOn    string    `yaml:"started_on"`
-	Repo         string    `yaml:"repo"`
+	Org          string    `yaml:"org"`
 	Type         string    `yaml:"type"`
 	ExtractedBy  string    `yaml:"extracted_by"`
 	ExtractedOn  string    `yaml:"extracted_on"`
@@ -60,9 +60,15 @@ const (
 	Rejected CbnUserApproval = "rejected"
 )
 
+type UserAccess struct {
+	AccessTo      string `yaml:"access_to"`
+	Justification string `yaml:"justification"`
+}
+
 type CbnUser struct {
-	Name        string          `yaml:"name"`
-	State       CbnUserApproval `yaml:"state"`
-	ValidatedOn string          `yaml:"validated_on"`
-	ValidatedBy string          `yaml:"validated_by"`
+	Name           string          `yaml:"name"`
+	State          CbnUserApproval `yaml:"state"`
+	ListOfAccesses []UserAccess    `yaml:"list_of_accesses"`
+	ValidatedOn    string          `yaml:"validated_on"`
+	ValidatedBy    string          `yaml:"validated_by"`
 }
