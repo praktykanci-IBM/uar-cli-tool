@@ -26,7 +26,7 @@ var extractCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		repoName, err := cmd.Flags().GetString("repo")
+		orgName, err := cmd.Flags().GetString("org")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -35,7 +35,7 @@ var extractCmd = &cobra.Command{
 		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
 
 		if cbnID == "" {
-			cbnID = getCbnID(repoName, githubClient)
+			cbnID = getCbnID(orgName, githubClient)
 		}
 
 		cbnOriginalFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("CBN/%s.yaml", cbnID), nil)
@@ -57,7 +57,18 @@ var extractCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		_, usersWithAccess, res, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s", cbnContent.Repo), nil)
+		// _, usersWithAccess, res, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s", cbnContent.Repo), nil)
+		// if err != nil {
+		// 	if res.StatusCode == 404 {
+		// 		fmt.Fprintf(os.Stderr, "No access records for such repository\n")
+		// 	} else {
+		// 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		// 	}
+		// 	os.Exit(1)
+		// }
+
+		cbnContent.Users = []types.CbnUser{}
+		_, repos, res, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s", cbnContent.Org), nil)
 		if err != nil {
 			if res.StatusCode == 404 {
 				fmt.Fprintf(os.Stderr, "No access records for such repository\n")
@@ -67,10 +78,76 @@ var extractCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		cbnContent.Users = []types.CbnUser{}
-		for _, user := range usersWithAccess {
+		for _, repo := range repos {
+			_, usersWithAccess, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s", cbnContent.Org, *repo.Name), nil)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
+				os.Exit(1)
+			}
 
-			requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s", strings.Split(cbnContent.Repo, "/")[0], strings.Split(cbnContent.Repo, "/")[1], *user.Name), nil)
+			for _, user := range usersWithAccess {
+
+				requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s", cbnContent.Org, *repo.Name, *user.Name), nil)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
+					os.Exit(1)
+				}
+				requestFileMarshaled, err := requestFile.GetContent()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+
+				var requestFileContent types.RequestDataCompleted
+				err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+
+				if requestFileContent.State != types.Removed {
+					userInList := false
+					for i, u := range cbnContent.Users {
+						if fmt.Sprintf("%s.yaml", u.Name) == *requestFile.Name {
+							userInList = true
+							cbnContent.Users[i].ListOfAccesses = append(cbnContent.Users[i].ListOfAccesses, types.UserAccess{
+								AccessType:    "repository",
+								AccessTo:      *repo.Name,
+								Justification: requestFileContent.Justification,
+							})
+						}
+					}
+					if !userInList {
+						newUser := types.CbnUser{
+							Name:           strings.Split(*user.Name, ".")[0],
+							State:          types.Pending,
+							ListOfAccesses: []types.UserAccess{},
+							ValidatedOn:    "",
+							ValidatedBy:    "",
+						}
+						newUser.ListOfAccesses = append(newUser.ListOfAccesses, types.UserAccess{
+							AccessType:    "repository",
+							AccessTo:      *repo.Name,
+							Justification: requestFileContent.Justification,
+						})
+						cbnContent.Users = append(cbnContent.Users, newUser)
+					}
+
+				}
+
+			}
+
+		}
+
+		_, usersWithAccessOrg, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s", cbnContent.Org), nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
+			os.Exit(1)
+		}
+
+		for _, user := range usersWithAccessOrg {
+
+			requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s/%s", cbnContent.Org, *user.Name), nil)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
 				os.Exit(1)
@@ -89,12 +166,104 @@ var extractCmd = &cobra.Command{
 			}
 
 			if requestFileContent.State != types.Removed {
-				cbnContent.Users = append(cbnContent.Users, types.CbnUser{
-					Name:        strings.Split(*user.Name, ".")[0],
-					State:       types.Pending,
-					ValidatedOn: "",
-					ValidatedBy: "",
-				})
+				userInList := false
+				for i, u := range cbnContent.Users {
+					if fmt.Sprintf("%s.yaml", u.Name) == *requestFile.Name {
+						userInList = true
+						cbnContent.Users[i].ListOfAccesses = append(cbnContent.Users[i].ListOfAccesses, types.UserAccess{
+							AccessType:    "organization",
+							AccessTo:      cbnContent.Org,
+							Justification: requestFileContent.Justification,
+						})
+					}
+				}
+				if !userInList {
+					newUser := types.CbnUser{
+						Name:           strings.Split(*user.Name, ".")[0],
+						State:          types.Pending,
+						ListOfAccesses: []types.UserAccess{},
+						ValidatedOn:    "",
+						ValidatedBy:    "",
+					}
+					newUser.ListOfAccesses = append(newUser.ListOfAccesses, types.UserAccess{
+						AccessType:    "organization",
+						AccessTo:      cbnContent.Org,
+						Justification: requestFileContent.Justification,
+					})
+					cbnContent.Users = append(cbnContent.Users, newUser)
+				}
+
+			}
+
+		}
+
+		_, teams, res, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s", cbnContent.Org), nil)
+		if err != nil {
+			if res.StatusCode == 404 {
+				fmt.Fprintf(os.Stderr, "No access records for such repository\n")
+			} else {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			}
+			os.Exit(1)
+		}
+
+		for _, team := range teams {
+			_, usersWithAccess, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s/%s", cbnContent.Org, *team.Name), nil)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
+				os.Exit(1)
+			}
+
+			for _, user := range usersWithAccess {
+
+				requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s/%s/%s", cbnContent.Org, *team.Name, *user.Name), nil)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
+					os.Exit(1)
+				}
+				requestFileMarshaled, err := requestFile.GetContent()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+
+				var requestFileContent types.RequestDataCompleted
+				err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+
+				if requestFileContent.State != types.Removed {
+					userInList := false
+					for i, u := range cbnContent.Users {
+						if fmt.Sprintf("%s.yaml", u.Name) == *requestFile.Name {
+							userInList = true
+							cbnContent.Users[i].ListOfAccesses = append(cbnContent.Users[i].ListOfAccesses, types.UserAccess{
+								AccessType:    "team",
+								AccessTo:      *team.Name,
+								Justification: requestFileContent.Justification,
+							})
+						}
+					}
+					if !userInList {
+						newUser := types.CbnUser{
+							Name:           strings.Split(*user.Name, ".")[0],
+							State:          types.Pending,
+							ListOfAccesses: []types.UserAccess{},
+							ValidatedOn:    "",
+							ValidatedBy:    "",
+						}
+						newUser.ListOfAccesses = append(newUser.ListOfAccesses, types.UserAccess{
+							AccessType:    "team",
+							AccessTo:      *team.Name,
+							Justification: requestFileContent.Justification,
+						})
+						cbnContent.Users = append(cbnContent.Users, newUser)
+					}
+
+				}
+
 			}
 
 		}
@@ -129,25 +298,7 @@ var extractCmd = &cobra.Command{
 
 		sha := a.Content.SHA
 
-		for _, user := range usersWithAccess {
-
-			requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s", strings.Split(cbnContent.Repo, "/")[0], strings.Split(cbnContent.Repo, "/")[1], *user.Name), nil)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
-				os.Exit(1)
-			}
-			requestFileMarshaled, err := requestFile.GetContent()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
-
-			var requestFileContent types.RequestDataCompleted
-			err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+		for _, user := range cbnContent.Users {
 			var prCbnContent types.CbnData
 			tmp, err := yaml.Marshal(cbnContent)
 			if err != nil {
@@ -161,15 +312,12 @@ var extractCmd = &cobra.Command{
 			}
 			for i, userInCbn := range prCbnContent.Users {
 				// fmt.Println(*user.Name, userInCbn.Name)
-				if *user.Name == fmt.Sprintf("%s.yaml", userInCbn.Name) {
+				if user.Name == userInCbn.Name {
 					if cbnContent.Type == "positive" {
 						prCbnContent.Users[i].State = types.Aproved
 					} else {
 						prCbnContent.Users[i].State = types.Rejected
 					}
-					fmt.Println("zmiana")
-					fmt.Println(prCbnContent.Users)
-					fmt.Println(cbnContent.Users)
 					// currentTime := time.Now()
 					// formattedTime := currentTime.Format("02.01.2006, 15:04 MST")
 
@@ -186,7 +334,7 @@ var extractCmd = &cobra.Command{
 				}
 			}
 
-			branchName := fmt.Sprintf("CBN/%s/%s", cbnContent.Repo, *user.Name)
+			branchName := fmt.Sprintf("CBN/%s/%s", cbnContent.Org, user.Name)
 
 			_, _, err = githubClient.Repositories.GetBranch(context.Background(), configData.ORG_NAME, configData.DB_NAME, branchName, 0)
 			if err != nil {
@@ -207,8 +355,6 @@ var extractCmd = &cobra.Command{
 				}
 				fmt.Println("Branch created successfully!")
 
-				fmt.Println(prCbnContent.Users)
-				fmt.Println(cbnContent.Users)
 			} else {
 				fmt.Println("This request already exists!")
 				return
@@ -252,10 +398,10 @@ var extractCmd = &cobra.Command{
 
 func init() {
 	extractCmd.Flags().StringP("cbn-id", "i", "", "The CBN ID to extract data for")
-	extractCmd.Flags().StringP("repo", "r", "", "The repository name ")
+	extractCmd.Flags().StringP("org", "o", "", "The organization name ")
 
-	extractCmd.MarkFlagsMutuallyExclusive("cbn-id", "repo")
-	extractCmd.MarkFlagsOneRequired("cbn-id", "repo")
+	extractCmd.MarkFlagsMutuallyExclusive("cbn-id", "org")
+	extractCmd.MarkFlagsOneRequired("cbn-id", "org")
 
 	extractCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
 
