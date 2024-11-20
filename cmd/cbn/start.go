@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"praktykanci/uar/configData"
@@ -22,14 +21,9 @@ var startCmd = &cobra.Command{
 	Aliases: []string{"s"},
 	Args:    cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		repo, err := cmd.Flags().GetString("repo")
+		org, err := cmd.Flags().GetString("org")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-
-		if !strings.Contains(repo, "/") {
-			fmt.Fprintf(os.Stderr, "Error: Invalid repository name\nRepo name should be in format owner/repo\n")
 			os.Exit(1)
 		}
 
@@ -75,7 +69,7 @@ var startCmd = &cobra.Command{
 					os.Exit(1)
 				}
 
-				if cbnContent.Repo == repo && cbnContent.ExecutedBy == "" {
+				if cbnContent.Org == org && cbnContent.ExecutedBy == "" {
 					fmt.Fprintf(os.Stderr, "active CBN for this repository already exists\n")
 					os.Exit(1)
 				}
@@ -108,7 +102,7 @@ var startCmd = &cobra.Command{
 		newCbn := types.CbnData{
 			StartedBy:    *startedBy.Login,
 			StartedOn:    formattedTime,
-			Repo:         repo,
+			Org:          org,
 			Type:         cbnType,
 			Users:        []types.CbnUser{},
 			ExtractedBy:  "",
@@ -138,10 +132,10 @@ var startCmd = &cobra.Command{
 }
 
 func init() {
-	startCmd.Flags().StringP("repo", "r", "", "The repository in the format owner/repo")
+	startCmd.Flags().StringP("org", "o", "", "The organization for the CBN")
 	startCmd.Flags().StringP("type", "y", "", "The type of CBN (positive or negative)")
 
-	startCmd.MarkFlagRequired("repo")
+	startCmd.MarkFlagRequired("org")
 	startCmd.MarkFlagRequired("type")
 
 	startCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", configData.GITHUB_PAT, "GitHub personal access token")

@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func getCbnID(repoName string, githubClient *github.Client) string {
+func getCbnID(orgName string, githubClient *github.Client) string {
 	_, currentCbns, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, "CBN", nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -40,7 +40,7 @@ func getCbnID(repoName string, githubClient *github.Client) string {
 			os.Exit(1)
 		}
 
-		if cbnContent.Repo == repoName && cbnContent.ExecutedBy == "" {
+		if cbnContent.Org == orgName && cbnContent.ExecutedBy == "" {
 			cbnID = strings.Split(*cbn.Name, ".")[0]
 			break
 		}
