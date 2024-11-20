@@ -39,19 +39,6 @@ type CbnData struct {
 	UsersChanged []CbnUser `yaml:"userschanged"`
 }
 
-// type CbnDataCompleted struct {
-// 	StartedBy    string    `yaml:"started_by"`
-// 	StartedOn    string    `yaml:"started_on"`
-// 	Repo         string    `yaml:"repo"`
-// 	Type         string    `yaml:"type"`
-// 	ExtractedBy  string    `yaml:"extracted_by"`
-// 	ExtractedOn  string    `yaml:"extracted_on"`
-// 	Users        []CbnUser `yaml:"users"`
-// 	ExecutedBy   string    `yaml:"executed_by"`
-// 	ExecutedOn   string    `yaml:"executed_on"`
-// 	UsersChanged []CbnUser `yaml:"userschanged"`
-// }
-
 type CbnUserApproval string
 
 const (
@@ -61,10 +48,18 @@ const (
 )
 
 type UserAccess struct {
-	AccessType    string `yaml:"access_type"`
-	AccessTo      string `yaml:"access_to"`
-	Justification string `yaml:"justification"`
+	AccessType    AccessType `yaml:"access_type"`
+	AccessTo      string     `yaml:"access_to"`
+	Justification string     `yaml:"justification"`
 }
+
+type AccessType string
+
+const (
+	Repo AccessType = "repo"
+	Org  AccessType = "org"
+	Team AccessType = "team"
+)
 
 type CbnUser struct {
 	Name           string          `yaml:"name"`

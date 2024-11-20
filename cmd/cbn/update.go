@@ -6,7 +6,6 @@ import (
 	"os"
 	"praktykanci/uar/configData"
 	"praktykanci/uar/types"
-	"strings"
 	"time"
 
 	"github.com/google/go-github/v66/github"
@@ -15,17 +14,17 @@ import (
 )
 
 var updateCmd = &cobra.Command{
-	Use:     "update admin_name {cbn_id | --repo repo_name}",
+	Use:     "update",
 	Short:   "Complete the CBN, removing all rejected users from the repo",
 	Aliases: []string{"u"},
 	Run: func(cmd *cobra.Command, args []string) {
-		cbnID, err := cmd.Flags().GetString("cbn-id")
+		id, err := cmd.Flags().GetString("cbn-id")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		repoName, err := cmd.Flags().GetString("repo")
+		org, err := cmd.Flags().GetString("org")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -33,11 +32,11 @@ var updateCmd = &cobra.Command{
 
 		githubClient := github.NewClient(nil).WithAuthToken(configData.GITHUB_PAT)
 
-		if cbnID == "" {
-			cbnID = getCbnID(repoName, githubClient)
+		if id == "" {
+			id = getCbnID(org, githubClient)
 		}
 
-		cbnOriginalFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("CBN/%s.yaml", cbnID), nil)
+		cbnOriginalFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("CBN/%s.yaml", id), nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -56,6 +55,10 @@ var updateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		if org == "" {
+			org = cbnContent.Org
+		}
+
 		executedBy, _, err := githubClient.Users.Get(context.Background(), "")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -68,7 +71,7 @@ var updateCmd = &cobra.Command{
 		cbnContentUpdated := types.CbnData{
 			StartedBy:    cbnContent.StartedBy,
 			StartedOn:    cbnContent.StartedOn,
-			Repo:         cbnContent.Repo,
+			Org:          cbnContent.Org,
 			Type:         cbnContent.Type,
 			ExtractedBy:  cbnContent.ExtractedBy,
 			ExtractedOn:  cbnContent.ExtractedOn,
@@ -79,57 +82,159 @@ var updateCmd = &cobra.Command{
 		}
 
 		for _, user := range cbnContent.Users {
-
 			if (cbnContent.Type == "positive" && user.State == types.Pending) || (user.State == types.Rejected) {
-				_, err = githubClient.Repositories.RemoveCollaborator(context.Background(), strings.Split(cbnContent.Repo, "/")[0], strings.Split(cbnContent.Repo, "/")[1], user.Name)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-					os.Exit(1)
+				for _, access := range user.ListOfAccesses {
+					switch access.AccessType {
+					case types.Repo:
+						_, err = githubClient.Repositories.RemoveCollaborator(context.Background(), org, access.AccessTo, user.Name)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s.yaml", org, access.AccessTo, user.Name), nil)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						requestFileSHA := *requestFile.SHA
+						requestFileMarshaled, err := requestFile.GetContent()
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						var requestFileContent types.RequestDataCompleted
+						err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						requestCompleted := types.RequestDataCompleted{
+							ID:            requestFileContent.ID,
+							State:         types.Removed,
+							Justification: requestFileContent.Justification,
+							RequestedOn:   requestFileContent.RequestedOn,
+							RequestedBy:   requestFileContent.RequestedBy,
+							CompletedOn:   requestFileContent.CompletedOn,
+							CompletedBy:   requestFileContent.CompletedBy,
+						}
+
+						resFileMarshaled, err := yaml.Marshal(requestCompleted)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						_, _, _ = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s.yaml", org, access.AccessTo, user.Name), &github.RepositoryContentFileOptions{
+							Message: github.String("Removed user"),
+							Content: resFileMarshaled,
+							SHA:     &requestFileSHA,
+						})
+
+					case types.Org:
+						_, err := githubClient.Organizations.RemoveMember(context.Background(), access.AccessTo, user.Name)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s/%s.yaml", access.AccessTo, user.Name), nil)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						requestFileSHA := *requestFile.SHA
+						requestFileMarshaled, err := requestFile.GetContent()
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						var requestFileContent types.RequestDataCompleted
+						err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						requestCompleted := types.RequestDataCompleted{
+							ID:            requestFileContent.ID,
+							State:         types.Removed,
+							Justification: requestFileContent.Justification,
+							RequestedOn:   requestFileContent.RequestedOn,
+							RequestedBy:   requestFileContent.RequestedBy,
+							CompletedOn:   requestFileContent.CompletedOn,
+							CompletedBy:   requestFileContent.CompletedBy,
+						}
+
+						resFileMarshaled, err := yaml.Marshal(requestCompleted)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						_, _, _ = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s/%s.yaml", access.AccessTo, user.Name), &github.RepositoryContentFileOptions{
+							Message: github.String("Removed user"),
+							Content: resFileMarshaled,
+							SHA:     &requestFileSHA,
+						})
+
+					case types.Team:
+						_, err := githubClient.Teams.RemoveTeamMembershipBySlug(context.Background(), org, access.AccessTo, user.Name)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s/%s/%s.yaml", org, access.AccessTo, user.Name), nil)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						requestFileSHA := *requestFile.SHA
+						requestFileMarshaled, err := requestFile.GetContent()
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						var requestFileContent types.RequestDataCompleted
+						err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						requestCompleted := types.RequestDataCompleted{
+							ID:            requestFileContent.ID,
+							State:         types.Removed,
+							Justification: requestFileContent.Justification,
+							RequestedOn:   requestFileContent.RequestedOn,
+							RequestedBy:   requestFileContent.RequestedBy,
+							CompletedOn:   requestFileContent.CompletedOn,
+							CompletedBy:   requestFileContent.CompletedBy,
+						}
+
+						resFileMarshaled, err := yaml.Marshal(requestCompleted)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+							os.Exit(1)
+						}
+
+						_, _, _ = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s/%s/%s.yaml", org, access.AccessTo, user.Name), &github.RepositoryContentFileOptions{
+							Message: github.String("Removed user"),
+							Content: resFileMarshaled,
+							SHA:     &requestFileSHA,
+						})
+					}
+
+					cbnContentUpdated.UsersChanged = append(cbnContentUpdated.UsersChanged, user)
 				}
-
-				requestFile, _, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s.yaml", strings.Split(cbnContent.Repo, "/")[0], strings.Split(cbnContent.Repo, "/")[1], user.Name), nil)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
-					os.Exit(1)
-				}
-
-				requestFileSHA := *requestFile.SHA
-				requestFileMarshaled, err := requestFile.GetContent()
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-					os.Exit(1)
-				}
-
-				var requestFileContent types.RequestDataCompleted
-				err = yaml.Unmarshal([]byte(requestFileMarshaled), &requestFileContent)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-					os.Exit(1)
-				}
-
-				requestCompleted := types.RequestDataCompleted{
-					ID:            requestFileContent.ID,
-					State:         types.Removed,
-					Justification: requestFileContent.Justification,
-					RequestedOn:   requestFileContent.RequestedOn,
-					RequestedBy:   requestFileContent.RequestedBy,
-					CompletedOn:   requestFileContent.CompletedOn,
-					CompletedBy:   requestFileContent.CompletedBy,
-				}
-
-				resFileMarshaled, err := yaml.Marshal(requestCompleted)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-					os.Exit(1)
-				}
-
-				_, _, _ = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s/%s.yaml", strings.Split(cbnContent.Repo, "/")[0], strings.Split(cbnContent.Repo, "/")[1], user.Name), &github.RepositoryContentFileOptions{
-					Message: github.String("Removed user"),
-					Content: resFileMarshaled,
-					SHA:     &requestFileSHA,
-				})
-
-				cbnContentUpdated.UsersChanged = append(cbnContentUpdated.UsersChanged, user)
 			}
 		}
 
@@ -140,7 +245,7 @@ var updateCmd = &cobra.Command{
 		}
 
 		_, _, err = githubClient.Repositories.UpdateFile(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("CBN/%s", *cbnOriginalFile.Name), &github.RepositoryContentFileOptions{
-			Message: github.String(fmt.Sprintf("Update collaborators list, complete CBN %s", cbnID)),
+			Message: github.String(fmt.Sprintf("Update collaborators list, complete CBN %s", id)),
 			Content: resCbnMarshaled,
 			SHA:     cbnOriginalFile.SHA,
 		})
@@ -149,17 +254,42 @@ var updateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Printf("CBN with ID: %s completed\n", cbnID)
+		pullRequests, _, err := githubClient.PullRequests.List(context.Background(), configData.ORG_NAME, configData.DB_NAME, &github.PullRequestListOptions{
+			State: "open",
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 
+		for _, pr := range pullRequests {
+			if *pr.Title == fmt.Sprintf("Validate CBN - %s", id) {
+				_, _, err = githubClient.PullRequests.Edit(context.Background(), configData.ORG_NAME, configData.DB_NAME, *pr.Number, &github.PullRequest{
+					State: github.String("closed"),
+				})
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+
+				_, err = githubClient.Git.DeleteRef(context.Background(), configData.ORG_NAME, configData.DB_NAME, *pr.Base.Ref)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+			}
+		}
+
+		fmt.Printf("CBN with ID: %s completed\n", id)
 	},
 }
 
 func init() {
 	updateCmd.Flags().StringP("cbn-id", "i", "", "The CBN ID to extract data for")
-	updateCmd.Flags().StringP("repo", "r", "", "The repository name ")
+	updateCmd.Flags().StringP("org", "o", "", "The organisation name ")
 
-	updateCmd.MarkFlagsMutuallyExclusive("cbn-id", "repo")
-	updateCmd.MarkFlagsOneRequired("cbn-id", "repo")
+	updateCmd.MarkFlagsMutuallyExclusive("cbn-id", "org")
+	updateCmd.MarkFlagsOneRequired("cbn-id", "org")
 
 	updateCmd.Flags().StringVarP(&configData.GITHUB_PAT, "token", "t", "", "GitHub personal access token")
 
