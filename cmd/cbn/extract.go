@@ -58,15 +58,7 @@ var extractCmd = &cobra.Command{
 		}
 
 		cbnContent.Users = []types.CbnUser{}
-		_, repos, res, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s", cbnContent.Org), nil)
-		if err != nil {
-			if res.StatusCode == 404 {
-				fmt.Fprintf(os.Stderr, "No access records for such repository\n")
-			} else {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			}
-			os.Exit(1)
-		}
+		_, repos, _, _ := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s", cbnContent.Org), nil)
 
 		for _, repo := range repos {
 			_, usersWithAccess, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("user-access-records/%s/%s", cbnContent.Org, *repo.Name), nil)
@@ -129,11 +121,7 @@ var extractCmd = &cobra.Command{
 
 		}
 
-		_, usersWithAccessOrg, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s", cbnContent.Org), nil)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err) // no such request
-			os.Exit(1)
-		}
+		_, usersWithAccessOrg, _, _ := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("org-access-records/%s", cbnContent.Org), nil)
 
 		for _, user := range usersWithAccessOrg {
 
@@ -187,15 +175,7 @@ var extractCmd = &cobra.Command{
 
 		}
 
-		_, teams, res, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s", cbnContent.Org), nil)
-		if err != nil {
-			if res.StatusCode == 404 {
-				fmt.Fprintf(os.Stderr, "No access records for such repository\n")
-			} else {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			}
-			os.Exit(1)
-		}
+		_, teams, _, _ := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s", cbnContent.Org), nil)
 
 		for _, team := range teams {
 			_, usersWithAccess, _, err := githubClient.Repositories.GetContents(context.Background(), configData.ORG_NAME, configData.DB_NAME, fmt.Sprintf("team-access-records/%s/%s", cbnContent.Org, *team.Name), nil)
@@ -354,12 +334,21 @@ var extractCmd = &cobra.Command{
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
+			text := ""
+			if cbnContent.Type == "positive" {
+				text = fmt.Sprintf("If you want user %s to keep their accesses, accept and merge this pull request. If you want the user to lose their accesses, don't merge the pull request. \nList of accesses:", user.Name)
+			} else {
+				text = fmt.Sprintf("If you want user %s to lose their accesses, accept and merge this pull request. If you want the user to keep their accesses, don't merge the pull request. \nList of accesses:", user.Name)
+			}
+			for _, access := range user.ListOfAccesses {
+				text = fmt.Sprintf("%s\n%s %s Justification: %s", text, string(access.AccessType), access.AccessTo, access.Justification)
+			}
 
 			newPR := &github.NewPullRequest{
-				Title: github.String(fmt.Sprintf("Validate CBN - %s", cbnID)),
+				Title: github.String(fmt.Sprintf("Validate user %s in organization %s.", user.Name, cbnContent.Org)),
 				Head:  github.String(branchName),
 				Base:  github.String("main"),
-				Body:  github.String("Validate user"),
+				Body:  github.String(text),
 			}
 
 			_, _, err = githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.DB_NAME, newPR)
