@@ -54,7 +54,7 @@ var addCommand = &cobra.Command{
 
 		if uarID != "" {
 			addByUarID(uarID, githubClient)
-		} else if org != "" {
+		} else if org != "" && team == "" && repo == "" {
 			addToOrg(user, org, githubClient)
 		} else if team != "" {
 			addToTeam(user, org, team, githubClient)
