@@ -6,6 +6,7 @@ type RequestData struct {
 	Justification string           `yaml:"justification"`
 	RequestedOn   string           `yaml:"requested_on"`
 	RequestedBy   string           `yaml:"requested_by"`
+	Manager       string           `yaml:"manager"`
 }
 
 type RequestDataCompleted struct {
@@ -16,6 +17,7 @@ type RequestDataCompleted struct {
 	RequestedBy   string           `yaml:"requested_by"`
 	CompletedOn   string           `yaml:"completed_on"`
 	CompletedBy   string           `yaml:"completed_by"`
+	Manager       string           `yaml:"manager"`
 }
 
 type RequestUserState string

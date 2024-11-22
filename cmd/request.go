@@ -88,6 +88,7 @@ var requestCmd = &cobra.Command{
 			Justification: justification,
 			RequestedOn:   formattedTime,
 			RequestedBy:   *requestedByUser.Login,
+			Manager:       managerName,
 		}
 
 		content, err := yaml.Marshal(&newRequest)

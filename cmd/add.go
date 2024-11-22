@@ -260,6 +260,7 @@ func addToRepo(user string, org string, repo string, githubClient *github.Client
 		RequestedBy:   requestFileContent.RequestedBy,
 		CompletedOn:   formattedTime,
 		CompletedBy:   *completedBy.Login,
+		Manager:       requestFileContent.Manager,
 	}
 
 	resFileMarshaled, err := yaml.Marshal(requestCompleted)
@@ -340,6 +341,7 @@ func addToOrg(user string, org string, githubClient *github.Client) {
 		RequestedBy:   requestFileContent.RequestedBy,
 		CompletedOn:   formattedTime,
 		CompletedBy:   *completedBy.Login,
+		Manager:       requestFileContent.Manager,
 	}
 
 	resFileMarshaled, err := yaml.Marshal(requestCompleted)
@@ -410,6 +412,7 @@ func addToTeam(user string, org string, team string, githubClient *github.Client
 		RequestedBy:   requestFileContent.RequestedBy,
 		CompletedOn:   formattedTime,
 		CompletedBy:   *completedBy.Login,
+		Manager:       requestFileContent.Manager,
 	}
 
 	resFileMarshaled, err := yaml.Marshal(requestCompleted)
