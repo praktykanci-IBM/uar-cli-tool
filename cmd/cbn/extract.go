@@ -106,6 +106,7 @@ var extractCmd = &cobra.Command{
 							ListOfAccesses: []types.UserAccess{},
 							ValidatedOn:    "",
 							ValidatedBy:    "",
+							Manager:        requestFileContent.Manager,
 						}
 						newUser.ListOfAccesses = append(newUser.ListOfAccesses, types.UserAccess{
 							AccessType:    types.Repo,
@@ -162,6 +163,7 @@ var extractCmd = &cobra.Command{
 						ListOfAccesses: []types.UserAccess{},
 						ValidatedOn:    "",
 						ValidatedBy:    "",
+						Manager:        requestFileContent.Manager,
 					}
 					newUser.ListOfAccesses = append(newUser.ListOfAccesses, types.UserAccess{
 						AccessType:    types.Org,
@@ -223,6 +225,7 @@ var extractCmd = &cobra.Command{
 							ListOfAccesses: []types.UserAccess{},
 							ValidatedOn:    "",
 							ValidatedBy:    "",
+							Manager:        requestFileContent.Manager,
 						}
 						newUser.ListOfAccesses = append(newUser.ListOfAccesses, types.UserAccess{
 							AccessType:    types.Team,
@@ -343,7 +346,6 @@ var extractCmd = &cobra.Command{
 			for _, access := range user.ListOfAccesses {
 				text = fmt.Sprintf("%s\n%s %s Justification: %s", text, string(access.AccessType), access.AccessTo, access.Justification)
 			}
-
 			newPR := &github.NewPullRequest{
 				Title: github.String(fmt.Sprintf("Validate user %s in organization %s.", user.Name, cbnContent.Org)),
 				Head:  github.String(branchName),
@@ -351,12 +353,20 @@ var extractCmd = &cobra.Command{
 				Body:  github.String(text),
 			}
 
-			_, _, err = githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.DB_NAME, newPR)
+			pr, _, err := githubClient.PullRequests.Create(context.Background(), configData.ORG_NAME, configData.DB_NAME, newPR)
 			if err != nil {
 				fmt.Println("Error creating pull request:", err)
 				return
 			}
 
+			reviewers := github.ReviewersRequest{
+				Reviewers: []string{user.Manager},
+			}
+			_, _, err = githubClient.PullRequests.RequestReviewers(context.Background(), configData.ORG_NAME, configData.DB_NAME, pr.GetNumber(), reviewers)
+			if err != nil {
+				fmt.Println("Error adding reviewers:", err)
+				return
+			}
 		}
 
 		fmt.Printf("Data extracted for CBN with ID: %s\n", cbnID)

@@ -69,4 +69,5 @@ type CbnUser struct {
 	ListOfAccesses []UserAccess    `yaml:"list_of_accesses"`
 	ValidatedOn    string          `yaml:"validated_on"`
 	ValidatedBy    string          `yaml:"validated_by"`
+	Manager        string          `yaml:"manager"`
 }
